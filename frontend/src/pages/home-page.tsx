@@ -51,13 +51,13 @@ export function HomePage() {
       <div className="grid gap-5 md:grid-cols-2">
         <Link to={recentOrder ? `/orders/${recentOrder.id}` : "/marketplace"} className="rounded-3xl border bg-card p-6 shadow-sm transition hover:border-blue-300">
           <div className="flex items-center gap-4">
-            <div className="grid size-11 place-items-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"><PackageCheck /></div>
+            <div className="grid size-11 place-items-center rounded-2xl bg-emerald-100 text-emerald-700"><PackageCheck /></div>
             <div><p className="text-sm text-muted-foreground">{t("home.recentOrder")}</p><h3 className="font-bold">{recentOrder ? `Order #${recentOrder.reference}` : "No orders yet"}</h3></div>
           </div>
           <p className="mt-5 rounded-xl bg-muted px-4 py-3 text-sm font-medium capitalize">{recentOrder ? recentOrder.status.replaceAll("_", " ") : "Browse verified pharmacies"}</p>
         </Link>
-        <section className="rounded-3xl border border-blue-200 bg-blue-50 p-6 dark:border-blue-900 dark:bg-blue-950/35">
-          <h3 className="font-bold text-primary dark:text-blue-200">{t("home.upcomingRefill")}</h3>
+        <section className="rounded-3xl border border-blue-200 bg-blue-50 p-6">
+          <h3 className="font-bold text-primary">{t("home.upcomingRefill")}</h3>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{refillMedication ? t("home.refillSummary", { name: refillMedication.name, count: refillMedication.remainingDoses }) : t("home.noRefill")}</p>
           {refillMedication && <Button asChild className="mt-4" variant="outline"><Link to={`/medicines/${refillMedication.id}`}>{t("home.reviewMedication")}</Link></Button>}
         </section>

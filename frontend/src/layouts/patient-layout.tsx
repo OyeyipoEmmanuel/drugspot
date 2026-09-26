@@ -4,7 +4,6 @@ import { NavLink, Outlet } from "react-router-dom";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { OfflineBanner } from "@/components/feedback-states";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { cn } from "@/lib/utils";
@@ -46,7 +45,6 @@ export function PatientLayout() {
           <div className="flex items-center gap-2">
             <span className="hidden text-sm font-semibold sm:block">{session?.user.firstName}</span>
             <Button asChild variant="ghost" size="icon" className="relative"><NavLink to="/cart" aria-label={t("navigation.cart")}><ShoppingCart />{cart.itemCount > 0 && <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-primary text-[0.65rem] font-bold text-primary-foreground">{cart.itemCount}</span>}</NavLink></Button>
-            <ThemeToggle />
             <Button variant="ghost" size="icon" onClick={logout} aria-label={t("auth.signOut")}><LogOut /></Button>
           </div>
         </div>

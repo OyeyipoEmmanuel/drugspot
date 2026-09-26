@@ -56,7 +56,7 @@ export function MedicationForm({ initial, submitLabel, isSubmitting, onSubmit }:
         <FormField id="remainingDoses" label="Current doses" type="number" min="0" error={errors.remainingDoses?.message} {...register("remainingDoses", { valueAsNumber: true })} />
       </div>
       <fieldset className="space-y-3"><div className="flex items-center justify-between"><div><legend className="font-bold">Reminder times</legend><p className="mt-1 text-xs text-muted-foreground">Add the times shown on your medication instructions.</p></div><Button type="button" variant="outline" size="sm" onClick={() => append({ time: "12:00" })}><Plus />Add time</Button></div>{fields.map((field, index) => <div key={field.id} className="flex items-center gap-2"><Input type="time" aria-label={`Reminder time ${index + 1}`} {...register(`schedules.${index}.time`)} /><Button type="button" variant="ghost" size="icon" disabled={fields.length === 1} onClick={() => remove(index)} aria-label="Remove reminder"><Trash2 /></Button></div>)}</fieldset>
-      <div className="rounded-xl bg-blue-50 p-4 text-sm leading-6 text-blue-900 dark:bg-blue-950/40 dark:text-blue-100"><strong>Safety note:</strong> DrugSpot records the schedule you confirm. It does not prescribe medication or change your dosage.</div>
+      <div className="rounded-xl bg-blue-50 p-4 text-sm leading-6 text-blue-900"><strong>Safety note:</strong> DrugSpot records the schedule you confirm. It does not prescribe medication or change your dosage.</div>
       <Button className="w-full sm:w-auto" size="lg" disabled={isSubmitting}>{isSubmitting && <LoaderCircle className="animate-spin" />}{submitLabel}</Button>
     </form>
   );

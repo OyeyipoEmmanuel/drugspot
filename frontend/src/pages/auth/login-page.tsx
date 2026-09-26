@@ -45,7 +45,7 @@ export function LoginPage() {
         <FormField id="email" label={t("auth.email")} type="email" autoComplete="email" error={errors.email?.message} {...register("email")} />
         <FormField id="password" label={t("auth.password")} type="password" autoComplete="current-password" error={errors.password?.message} {...register("password")} />
         <div className="text-right"><Link to="/forgot-password" className="text-sm font-semibold text-primary hover:underline">{t("auth.forgotPassword")}</Link></div>
-        {submitError && <p className="rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300">{submitError}</p>}
+        {submitError && <p className="rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">{submitError}</p>}
         <Button className="w-full" size="lg" disabled={isSubmitting}>{isSubmitting && <LoaderCircle className="animate-spin" />}{t("auth.signIn")}</Button>
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">{t("auth.noAccount")} <Link to="/register" className="font-semibold text-primary hover:underline">{t("auth.createAccount")}</Link></p>

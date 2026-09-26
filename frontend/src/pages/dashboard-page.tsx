@@ -2,9 +2,9 @@ import { AlertTriangle, ClipboardCheck, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const stats = [
-  { key: "openOrders", value: "18", icon: ClipboardCheck, colour: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300" },
-  { key: "lowStock", value: "7", icon: AlertTriangle, colour: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300" },
-  { key: "refillRequests", value: "12", icon: RotateCcw, colour: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" },
+  { key: "openOrders", value: "18", icon: ClipboardCheck, colour: "bg-blue-100 text-blue-700" },
+  { key: "lowStock", value: "7", icon: AlertTriangle, colour: "bg-amber-100 text-amber-700" },
+  { key: "refillRequests", value: "12", icon: RotateCcw, colour: "bg-emerald-100 text-emerald-700" },
 ] as const;
 
 export function DashboardPage() {

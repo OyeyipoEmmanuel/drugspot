@@ -1,0 +1,16 @@
+import { ChevronRight, MessageCircle, ShieldCheck } from "lucide-react";
+import { Link } from "react-router-dom";
+
+import { ErrorState, LoadingState } from "@/components/feedback-states";
+import { PharmacistCard } from "@/components/pharmacist/pharmacist-card";
+import { Badge } from "@/components/ui/badge";
+import { useConversations, usePharmacists } from "@/hooks/use-pharmacist";
+import { formatDate } from "@/lib/format";
+
+export function PharmacistPage() {
+  const pharmacists = usePharmacists();
+  const conversations = useConversations();
+  if (pharmacists.isLoading || conversations.isLoading) return <LoadingState label="Finding verified pharmacists…" />;
+  if (pharmacists.error || conversations.error) return <ErrorState message="We could not load pharmacist support." onRetry={() => { void pharmacists.refetch(); void conversations.refetch(); }} />;
+  return <div className="space-y-8"><section className="rounded-3xl bg-primary p-6 text-primary-foreground shadow-lg sm:p-8"><div className="flex max-w-3xl gap-4"><ShieldCheck className="mt-1 size-9 shrink-0" /><div><p className="text-sm font-semibold text-blue-100">Verified professional support</p><h1 className="mt-2 text-3xl font-bold sm:text-4xl">Ask a pharmacist</h1><p className="mt-3 leading-7 text-blue-100">Get medicine guidance from a licensed pharmacy professional. For emergencies or severe symptoms, contact emergency care.</p></div></div></section>{Boolean(conversations.data?.length) && <section><div className="flex items-center justify-between"><h2 className="text-2xl font-bold">Your conversations</h2></div><div className="mt-4 grid gap-3">{conversations.data?.map((conversation) => <Link key={conversation.id} to={`/pharmacist/chat/${conversation.id}`} className="flex items-center gap-4 rounded-2xl border bg-card p-4 transition hover:border-primary/40 hover:shadow-sm"><div className="grid size-11 shrink-0 place-items-center rounded-xl bg-secondary font-bold text-primary">{conversation.pharmacist.firstName[0]}{conversation.pharmacist.lastName[0]}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-bold">{conversation.subject}</p>{conversation.unreadCount > 0 && <Badge>{conversation.unreadCount} new</Badge>}</div><p className="mt-1 truncate text-sm text-muted-foreground">Pharm. {conversation.pharmacist.firstName} · {conversation.messages.at(-1)?.body}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(conversation.updatedAt, { dateStyle: "medium", timeStyle: "short" })}</p></div><ChevronRight className="size-5 text-muted-foreground" /></Link>)}</div></section>}<section><div><h2 className="text-2xl font-bold">Available pharmacists</h2><p className="mt-1 text-sm text-muted-foreground">Professional identity and pharmacy affiliation are shown before you start a conversation.</p></div><div className="mt-5 grid gap-5 lg:grid-cols-3">{pharmacists.data?.map((profile) => <PharmacistCard key={profile.id} pharmacist={profile} />)}</div></section><div className="flex gap-3 rounded-2xl border bg-muted/50 p-5 text-sm leading-6 text-muted-foreground"><MessageCircle className="mt-0.5 shrink-0 text-primary" /><p>Pharmacists can provide medicine information and safe-use guidance. They do not replace your prescriber and cannot diagnose emergencies through chat.</p></div></div>;
+}
