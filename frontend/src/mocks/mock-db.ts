@@ -99,6 +99,7 @@ function writeMedications(medications: Medication[]) {
 }
 
 function createSession(input: LoginInput): AuthSession {
+  const isPharmacist = input.email.toLowerCase().includes("pharmacist");
   const isStaff = input.email.toLowerCase().includes("pharmacy");
   const isAdmin = input.email.toLowerCase().includes("admin");
   return {
@@ -106,10 +107,10 @@ function createSession(input: LoginInput): AuthSession {
     refreshToken: `mock-refresh-${crypto.randomUUID()}`,
     user: {
       id: "user-demo",
-      firstName: isStaff ? "Chidi" : isAdmin ? "Nneka" : "Amara",
-      lastName: isStaff ? "Eze" : isAdmin ? "Bello" : "Okoro",
+      firstName: isPharmacist ? "Ada" : isStaff ? "Chidi" : isAdmin ? "Nneka" : "Amara",
+      lastName: isPharmacist ? "Okafor" : isStaff ? "Eze" : isAdmin ? "Bello" : "Okoro",
       email: input.email,
-      role: isAdmin ? "platform_admin" : isStaff ? "pharmacy_admin" : "patient",
+      role: isAdmin ? "platform_admin" : isPharmacist ? "pharmacist" : isStaff ? "pharmacy_admin" : "patient",
       onboardingComplete: true,
     },
   };

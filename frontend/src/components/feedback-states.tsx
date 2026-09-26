@@ -7,9 +7,9 @@ export function LoadingState({ label = "Loading…" }: { label?: string }) {
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
-  return <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-900 dark:bg-red-950/30"><AlertCircle className="mx-auto text-destructive" /><p className="mt-3 font-semibold">Something went wrong</p><p className="mt-1 text-sm text-muted-foreground">{message}</p>{onRetry && <Button className="mt-4" variant="outline" onClick={onRetry}>Try again</Button>}</div>;
+  return <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center"><AlertCircle className="mx-auto text-destructive" /><p className="mt-3 font-semibold">Something went wrong</p><p className="mt-1 text-sm text-muted-foreground">{message}</p>{onRetry && <Button className="mt-4" variant="outline" onClick={onRetry}>Try again</Button>}</div>;
 }
 
 export function OfflineBanner() {
-  return <div className="flex items-center justify-center gap-2 bg-amber-100 px-4 py-2 text-xs font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-100"><WifiOff className="size-4" />You are offline. Some actions may be unavailable.</div>;
+  return <div className="flex items-center justify-center gap-2 bg-amber-100 px-4 py-2 text-xs font-semibold text-amber-900"><WifiOff className="size-4" />You are offline. Some actions may be unavailable.</div>;
 }

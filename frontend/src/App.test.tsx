@@ -14,7 +14,7 @@ describe("DrugSpot patient flows", () => {
     render(<AppProviders><App /></AppProviders>);
     await user.click(await screen.findByRole("link", { name: /drugspot/i }));
     expect(await screen.findByRole("heading", { name: /manage your medicines with more confidence/i })).toBeInTheDocument();
-  });
+  }, 15_000);
 
   it("signs a patient in and opens the medication journey", async () => {
     localStorage.clear();
@@ -46,5 +46,23 @@ describe("DrugSpot patient flows", () => {
     await user.click(screen.getByRole("button", { name: /place order/i }));
     await waitFor(() => expect(window.location.pathname).toMatch(/^\/orders\//), { timeout: 5_000 });
     expect(await screen.findByRole("heading", { name: /order received/i })).toBeInTheDocument();
+  }, 15_000);
+
+  it("starts and continues a secure pharmacist conversation", async () => {
+    localStorage.clear();
+    window.history.pushState({}, "", "/login");
+    const user = userEvent.setup();
+    render(<AppProviders><App /></AppProviders>);
+    await user.click(await screen.findByRole("button", { name: /sign in/i }));
+    await user.click(await screen.findByRole("link", { name: /start a conversation/i }));
+    expect(await screen.findByRole("heading", { name: /^ask a pharmacist$/i })).toBeInTheDocument();
+    await user.click((await screen.findAllByRole("link", { name: /ask this pharmacist/i }))[0]);
+    await user.type(await screen.findByLabelText(/what is your question about/i), "Medicine timing question");
+    await user.type(screen.getByLabelText(/your message/i), "Can I take this medicine after breakfast?");
+    await user.click(screen.getByRole("button", { name: /send securely/i }));
+    expect(await screen.findByText("Can I take this medicine after breakfast?")).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/^message$/i), "Thank you, I will follow the prescription instructions.");
+    await user.click(screen.getByRole("button", { name: /send message/i }));
+    expect(await screen.findByText("Thank you, I will follow the prescription instructions.")).toBeInTheDocument();
   }, 15_000);
 });

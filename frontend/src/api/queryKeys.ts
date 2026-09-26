@@ -12,7 +12,14 @@ export const queryKeys = {
     all: ["orders"] as const,
     detail: (id: string) => ["orders", id] as const,
   },
-  conversations: ["conversations"] as const,
+  pharmacists: {
+    all: ["pharmacists"] as const,
+    detail: (id: string) => ["pharmacists", id] as const,
+  },
+  conversations: {
+    all: ["conversations"] as const,
+    detail: (id: string) => ["conversations", id] as const,
+  },
   refills: ["refills"] as const,
   verifications: ["admin", "verifications"] as const,
   preorders: ["preorders"] as const,

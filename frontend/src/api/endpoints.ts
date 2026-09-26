@@ -22,7 +22,12 @@ export const endpoints = {
     detail: (id: string) => `/orders/${id}/`,
   },
   preorders: { list: "/pre-order-requests/" },
-  conversations: { list: "/conversations/", detail: (id: string) => `/conversations/${id}/` },
+  pharmacists: { list: "/pharmacists/", detail: (id: string) => `/pharmacists/${id}/` },
+  conversations: {
+    list: "/conversations/",
+    detail: (id: string) => `/conversations/${id}/`,
+    messages: (id: string) => `/conversations/${id}/messages/`,
+  },
   ocr: { extract: "/ocr/extractions/" },
   refills: { list: "/refill-requests/" },
   admin: { verifications: "/admin/verifications/" },

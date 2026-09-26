@@ -28,6 +28,10 @@ const CartPage = lazy(() => import("@/pages/marketplace/cart-page").then((module
 const CheckoutPage = lazy(() => import("@/pages/marketplace/checkout-page").then((module) => ({ default: module.CheckoutPage })));
 const OrdersPage = lazy(() => import("@/pages/orders/orders-page").then((module) => ({ default: module.OrdersPage })));
 const OrderDetailPage = lazy(() => import("@/pages/orders/order-detail-page").then((module) => ({ default: module.OrderDetailPage })));
+const PharmacistPage = lazy(() => import("@/pages/pharmacist/pharmacist-page").then((module) => ({ default: module.PharmacistPage })));
+const NewConversationPage = lazy(() => import("@/pages/pharmacist/new-conversation-page").then((module) => ({ default: module.NewConversationPage })));
+const ConversationPage = lazy(() => import("@/pages/pharmacist/conversation-page").then((module) => ({ default: module.ConversationPage })));
+const PharmacistInboxPage = lazy(() => import("@/pages/pharmacist/pharmacist-inbox-page").then((module) => ({ default: module.PharmacistInboxPage })));
 const PlaceholderPage = lazy(() => import("@/pages/placeholder-page").then((module) => ({ default: module.PlaceholderPage })));
 const ProfilePage = lazy(() => import("@/pages/profile-page").then((module) => ({ default: module.ProfilePage })));
 const UnauthorizedPage = lazy(() => import("@/pages/unauthorized-page").then((module) => ({ default: module.UnauthorizedPage })));
@@ -62,7 +66,9 @@ export default function App() {
           <Route path="checkout" element={<CheckoutPage />} />
           <Route path="orders" element={<OrdersPage />} />
           <Route path="orders/:id" element={<OrderDetailPage />} />
-          <Route path="pharmacist" element={<PlaceholderPage />} />
+          <Route path="pharmacist" element={<PharmacistPage />} />
+          <Route path="pharmacist/new/:id" element={<NewConversationPage />} />
+          <Route path="pharmacist/chat/:id" element={<ConversationPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
       </Route>
@@ -71,6 +77,8 @@ export default function App() {
           <Route index element={<DashboardPage />} />
           <Route path="orders" element={<PlaceholderPage />} />
           <Route path="inventory" element={<PlaceholderPage />} />
+          <Route path="messages" element={<PharmacistInboxPage />} />
+          <Route path="messages/:id" element={<ConversationPage />} />
           <Route path="customers" element={<PlaceholderPage />} />
           <Route path="refills" element={<PlaceholderPage />} />
         </Route>

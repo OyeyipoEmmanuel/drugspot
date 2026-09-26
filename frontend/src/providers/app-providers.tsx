@@ -4,7 +4,6 @@ import { BrowserRouter } from "react-router-dom";
 
 import { AuthProvider } from "@/providers/auth-provider";
 import { CartProvider } from "@/providers/cart-provider";
-import { ThemeProvider } from "@/providers/theme-provider";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -19,11 +18,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <BrowserRouter>
-          <AuthProvider><CartProvider>{children}</CartProvider></AuthProvider>
-        </BrowserRouter>
-      </ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider><CartProvider>{children}</CartProvider></AuthProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
