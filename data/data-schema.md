@@ -1,4 +1,5 @@
-erDiagram
+ERDiagram
+
     %% 1. IDENTITY & ACTORS
     USER {
         int user_id PK
