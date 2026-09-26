@@ -1,4 +1,4 @@
-import { Boxes, ClipboardList, LayoutDashboard, Menu, RotateCcw, Users, X } from "lucide-react";
+import { Boxes, ClipboardList, LayoutDashboard, LogOut, Menu, RotateCcw, Users, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet } from "react-router-dom";
@@ -7,6 +7,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/auth-provider";
 
 const dashboardLinks = [
   { key: "dashboard", icon: LayoutDashboard },
@@ -19,6 +20,7 @@ const dashboardLinks = [
 export function DashboardLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { t } = useTranslation();
+  const { session, logout } = useAuth();
 
   const sidebar = (
     <>
@@ -60,8 +62,10 @@ export function DashboardLayout() {
             <Menu />
           </Button>
           <div className="ml-auto flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm"><Link to="/">Patient app</Link></Button>
+            <span className="hidden text-sm font-semibold sm:block">{session?.user.firstName} {session?.user.lastName}</span>
+            <Button asChild variant="ghost" size="sm"><Link to="/">{t("navigation.patientApp")}</Link></Button>
             <ThemeToggle />
+            <Button variant="ghost" size="icon" onClick={logout} aria-label={t("auth.signOut")}><LogOut /></Button>
           </div>
         </header>
         <main className="p-4 sm:p-6 lg:p-8"><Outlet /></main>

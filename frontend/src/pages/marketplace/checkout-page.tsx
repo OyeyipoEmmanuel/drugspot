@@ -1,0 +1,44 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowLeft, Building2, CreditCard, FileCheck2, LoaderCircle, MapPin, ShieldCheck, Truck } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { z } from "zod";
+
+import { FormField } from "@/components/form-field";
+import { LoadingState } from "@/components/feedback-states";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useCheckout } from "@/hooks/use-marketplace";
+import { formatNaira } from "@/lib/format";
+import { useAuth } from "@/providers/auth-provider";
+import { useCart } from "@/providers/cart-provider";
+import type { FulfillmentMethod, PaymentMethod } from "@/types/marketplace";
+
+const schema = z.object({ recipientName: z.string().min(3, "Enter the recipient name."), phone: z.string().min(10, "Enter a valid phone number."), deliveryAddress: z.string().optional(), notes: z.string().optional() });
+type FormValues = z.infer<typeof schema>;
+
+export function CheckoutPage() {
+  const cart = useCart();
+  const { session } = useAuth();
+  const checkout = useCheckout();
+  const navigate = useNavigate();
+  const [fulfillment, setFulfillment] = useState<FulfillmentMethod>(cart.pharmacy?.supportsDelivery ? "delivery" : "pickup");
+  const [payment, setPayment] = useState<PaymentMethod>("card");
+  const [prescriptionFileName, setPrescriptionFileName] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [orderSubmitted, setOrderSubmitted] = useState(false);
+  const needsPrescription = cart.items.some((item) => item.product.requiresPrescription);
+  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { recipientName: `${session?.user.firstName ?? ""} ${session?.user.lastName ?? ""}`.trim(), phone: session?.user.phone ?? "", deliveryAddress: "", notes: "" } });
+  if (!cart.items.length || !cart.pharmacy) return orderSubmitted ? <LoadingState label="Opening your order…" /> : <Navigate to="/cart" replace />;
+  const deliveryFee = fulfillment === "delivery" ? cart.pharmacy.deliveryFee : 0;
+  const submit = handleSubmit(async (values) => {
+    setSubmitError("");
+    if (fulfillment === "delivery" && !values.deliveryAddress?.trim()) { setSubmitError("Enter a delivery address."); return; }
+    if (needsPrescription && !prescriptionFileName) { setSubmitError("Attach the prescription for review before placing this order."); return; }
+    try { const order = await checkout.mutateAsync({ items: cart.items, fulfillmentMethod: fulfillment, paymentMethod: payment, recipientName: values.recipientName, phone: values.phone, deliveryAddress: fulfillment === "delivery" ? values.deliveryAddress : undefined, prescriptionFileName: prescriptionFileName || undefined, notes: values.notes }); setOrderSubmitted(true); navigate(`/orders/${order.id}`, { replace: true, state: { justPlaced: true } }); cart.clearCart(); }
+    catch (error) { setSubmitError(error instanceof Error ? error.message : "Unable to place the order."); }
+  });
+  return <div className="space-y-6"><Button asChild variant="ghost" className="-ml-3"><Link to="/cart"><ArrowLeft />Back to cart</Link></Button><section><p className="text-sm font-semibold text-primary">Secure checkout</p><h1 className="mt-1 text-3xl font-bold">Delivery and payment</h1><p className="mt-2 text-muted-foreground">The pharmacy confirms availability and regulated requirements before fulfilment.</p></section><form onSubmit={submit} className="grid gap-6 lg:grid-cols-[1fr_360px]"><div className="space-y-5"><section className="rounded-3xl border bg-card p-5 shadow-sm sm:p-7"><h2 className="text-xl font-bold">Fulfilment</h2><div className="mt-5 grid gap-3 sm:grid-cols-2">{cart.pharmacy.supportsDelivery && <button type="button" onClick={() => setFulfillment("delivery")} className={`rounded-2xl border p-4 text-left ${fulfillment === "delivery" ? "border-primary bg-secondary ring-2 ring-primary/15" : ""}`}><Truck className="text-primary" /><p className="mt-3 font-bold">Delivery</p><p className="mt-1 text-xs text-muted-foreground">Fee {formatNaira(cart.pharmacy.deliveryFee)}</p></button>}{cart.pharmacy.supportsPickup && <button type="button" onClick={() => setFulfillment("pickup")} className={`rounded-2xl border p-4 text-left ${fulfillment === "pickup" ? "border-primary bg-secondary ring-2 ring-primary/15" : ""}`}><Building2 className="text-primary" /><p className="mt-3 font-bold">Pharmacy pickup</p><p className="mt-1 text-xs text-muted-foreground">{cart.pharmacy.address}</p></button>}</div></section><section className="rounded-3xl border bg-card p-5 shadow-sm sm:p-7"><h2 className="text-xl font-bold">Recipient details</h2><div className="mt-5 grid gap-5 sm:grid-cols-2"><FormField id="recipientName" label="Full name" error={errors.recipientName?.message} {...register("recipientName")} /><FormField id="checkoutPhone" label="Phone number" type="tel" error={errors.phone?.message} {...register("phone")} /></div>{fulfillment === "delivery" && <div className="mt-5"><FormField id="deliveryAddress" label="Delivery address" placeholder="Street, area, city" error={errors.deliveryAddress?.message} {...register("deliveryAddress")} /></div>}<div className="mt-5 space-y-2"><Label htmlFor="orderNotes">Order notes (optional)</Label><Textarea id="orderNotes" placeholder="Add delivery or pharmacy instructions" {...register("notes")} /></div></section>{needsPrescription && <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30 sm:p-7"><div className="flex gap-3"><FileCheck2 className="mt-1 shrink-0 text-amber-700" /><div><h2 className="font-bold text-amber-950 dark:text-amber-100">Prescription required</h2><p className="mt-1 text-sm leading-6 text-amber-800 dark:text-amber-300">Attach a clear prescription image. A pharmacist will review it before accepting the order.</p></div></div><input className="mt-5 block w-full text-sm file:mr-3 file:rounded-xl file:border-0 file:bg-primary file:px-4 file:py-2 file:font-semibold file:text-primary-foreground" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => setPrescriptionFileName(event.target.files?.[0]?.name ?? "")} /></section>}<section className="rounded-3xl border bg-card p-5 shadow-sm sm:p-7"><h2 className="text-xl font-bold">Payment method</h2><div className="mt-5 space-y-3">{([{ value: "card", label: "Card", icon: CreditCard }, { value: "bank_transfer", label: "Bank transfer", icon: Building2 }, { value: "cash_on_delivery", label: "Pay on delivery", icon: Truck }] as const).map(({ value, label, icon: Icon }) => <label key={value} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 ${payment === value ? "border-primary bg-secondary" : ""}`}><input type="radio" name="payment" value={value} checked={payment === value} onChange={() => setPayment(value)} /><Icon className="size-5 text-primary" /><span className="font-semibold">{label}</span></label>)}</div><div className="mt-4 flex gap-3 rounded-xl bg-blue-50 p-4 text-xs leading-5 text-blue-900 dark:bg-blue-950/30 dark:text-blue-100"><ShieldCheck className="mt-0.5 size-4 shrink-0" /><p>Payment credentials are handled by the regulated payment provider and are not stored by DrugSpot.</p></div></section></div><aside className="h-fit rounded-3xl border bg-card p-6 shadow-sm lg:sticky lg:top-24"><h2 className="text-xl font-bold">Order summary</h2><div className="mt-5 space-y-3">{cart.items.map((item) => <div key={item.offer.id} className="flex justify-between gap-3 text-sm"><span className="text-muted-foreground">{item.quantity}× {item.product.name}</span><span className="font-semibold">{formatNaira(item.offer.price * item.quantity)}</span></div>)}</div><dl className="mt-5 space-y-3 border-t pt-4 text-sm"><div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd>{formatNaira(cart.subtotal)}</dd></div><div className="flex justify-between"><dt className="text-muted-foreground">{fulfillment === "delivery" ? "Delivery" : "Pickup"}</dt><dd>{deliveryFee ? formatNaira(deliveryFee) : "Free"}</dd></div><div className="flex justify-between border-t pt-4 text-lg font-bold"><dt>Total</dt><dd>{formatNaira(cart.subtotal + deliveryFee)}</dd></div></dl>{submitError && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300">{submitError}</p>}<Button className="mt-6 w-full" size="lg" type="submit" disabled={checkout.isPending}>{checkout.isPending ? <LoaderCircle className="animate-spin" /> : <MapPin />}{checkout.isPending ? "Placing order…" : "Place order"}</Button></aside></form></div>;
+}

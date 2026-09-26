@@ -1,0 +1,13 @@
+import { ChevronRight, Package, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
+
+import { ErrorState, LoadingState } from "@/components/feedback-states";
+import { OrderStatusBadge } from "@/components/marketplace/order-status-badge";
+import { Button } from "@/components/ui/button";
+import { useOrders } from "@/hooks/use-marketplace";
+import { formatDate, formatNaira } from "@/lib/format";
+
+export function OrdersPage() {
+  const { data = [], isLoading, error, refetch } = useOrders();
+  return <div className="space-y-6"><section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-sm font-semibold text-primary">Purchase history</p><h1 className="mt-1 text-3xl font-bold">My orders</h1><p className="mt-2 text-muted-foreground">Track active pharmacy orders and review previous purchases.</p></div><Button asChild><Link to="/marketplace"><Plus />Order medicine</Link></Button></section>{isLoading ? <LoadingState label="Loading orders…" /> : error ? <ErrorState message={error.message} onRetry={() => void refetch()} /> : data.length ? <section className="space-y-4">{data.map((order) => <Link key={order.id} to={`/orders/${order.id}`} className="group block rounded-2xl border bg-card p-5 shadow-sm transition hover:border-blue-300 hover:shadow-md"><div className="flex items-start gap-4"><div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-secondary text-primary"><Package /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-bold">Order #{order.reference}</p><p className="mt-1 text-sm text-muted-foreground">{order.pharmacy.name} · {formatDate(order.createdAt)}</p></div><OrderStatusBadge status={order.status} /></div><div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t pt-4"><div><p className="text-sm text-muted-foreground">{order.items.map((item) => `${item.quantity}× ${item.name}`).join(", ")}</p><p className="mt-1 text-xs capitalize text-muted-foreground">{order.fulfillmentMethod.replaceAll("_", " ")} · {order.paymentStatus}</p></div><div className="flex items-center gap-3"><span className="font-bold">{formatNaira(order.total)}</span><ChevronRight className="size-5 text-muted-foreground transition group-hover:translate-x-1" /></div></div></div></div></Link>)}</section> : <section className="rounded-2xl border border-dashed p-12 text-center"><Package className="mx-auto size-9 text-muted-foreground" /><h2 className="mt-4 font-bold">No orders yet</h2><p className="mt-1 text-sm text-muted-foreground">Your pharmacy orders will appear here.</p><Button asChild className="mt-5"><Link to="/marketplace">Browse marketplace</Link></Button></section>}</div>;
+}
