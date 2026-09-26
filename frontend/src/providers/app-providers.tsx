@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { BrowserRouter } from "react-router-dom";
 
+import { AuthProvider } from "@/providers/auth-provider";
+import { CartProvider } from "@/providers/cart-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
@@ -18,7 +20,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <BrowserRouter>{children}</BrowserRouter>
+        <BrowserRouter>
+          <AuthProvider><CartProvider>{children}</CartProvider></AuthProvider>
+        </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>
   );
