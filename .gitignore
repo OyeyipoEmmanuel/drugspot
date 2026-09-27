@@ -54,9 +54,6 @@ secrets/
 *.pem
 *.key
 
-# Alembic local config overrides
-alembic.ini
-
 # Node / frontend if present
 node_modules/
 .next/

@@ -1,151 +1,100 @@
-from __future__ import annotations
-
 import asyncio
-from collections.abc import AsyncGenerator
 
-import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import StaticPool
+from app.auth.models import UserRole
 
-from backend.app.pharmacy_verification.deps import get_current_user, get_db
-from backend.app.pharmacy_verification.models import Base
-from backend.app.pharmacy_verification.router import router
+from .conftest import auth_header, register_patient
 
 
-@pytest.fixture
-def client() -> TestClient:
-    engine = create_async_engine(
-        "sqlite+aiosqlite://",
-        poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
+def application_payload(name: str = "DrugSpot Pharmacy") -> dict:
+    return {
+        "name": name,
+        "address": "12 Marina Road",
+        "city": "Lagos",
+        "state": "Lagos",
+        "country": "Nigeria",
+        "phone": "+2348000000000",
+        "email": "hello@drugspot.ng",
+        "description": "A community pharmacy.",
+        "supportsDelivery": True,
+        "supportsPickup": True,
+        "deliveryFee": 1500,
+    }
+
+
+def vendor_registration_payload() -> dict:
+    return {
+        "firstName": "Amaka",
+        "lastName": "Okafor",
+        "email": "vendor@example.com",
+        "phone": "+2348055555555",
+        "password": "StrongPass123!",
+        "pharmacy": application_payload(),
+        "pharmacyLicense": {
+            "licenseNumber": "PCN-LAG-12345",
+            "issuedBy": "Pharmacy Council of Nigeria",
+            "documentUrl": "https://documents.example.com/pharmacy-license.pdf",
+        },
+        "pharmacistLicenseNumber": "PCN-PHARMACIST-12345",
+        "pharmacistLicenseIssuedBy": "Pharmacy Council of Nigeria",
+        "pharmacistLicenseDocumentUrl": "https://documents.example.com/pharmacist-license.pdf",
+    }
+
+
+def test_pharmacy_application_review_and_public_discovery(api) -> None:
+    client, create_user = api
+    registration = client.post("/api/v1/pharmacy/register/", json=vendor_registration_payload())
+    assert registration.status_code == 201, registration.text
+    owner = registration.json()
+    assert owner["user"]["role"] == "pharmacy_admin"
+    application = client.get("/api/v1/pharmacy/application/", headers=auth_header(owner))
+    pharmacy_id = application.json()["id"]
+    assert application.json()["verificationStatus"] == "pending"
+
+    asyncio.run(create_user(email="reviewer@example.com", phone="+2348066666666", role=UserRole.PLATFORM_ADMIN))
+    admin_login = client.post(
+        "/api/v1/auth/login/", json={"email": "reviewer@example.com", "password": "StrongPass123!"}
+    ).json()
+    queue = client.get("/api/v1/admin/verifications/", headers=auth_header(admin_login))
+    assert queue.status_code == 200, queue.text
+    assert len(queue.json()) == 1
+    assert queue.json()[0]["licenses"][0]["licenseNumber"] == "PCN-LAG-12345"
+    assert queue.json()[0]["pharmacistInCharge"]["licenseNumber"] == "PCN-PHARMACIST-12345"
+    assert queue.json()[0]["pharmacistInCharge"]["firstName"] == "Amaka"
+
+    review = client.patch(
+        f"/api/v1/admin/verifications/{pharmacy_id}/",
+        json={"decision": "approved", "notes": "Documents verified"},
+        headers=auth_header(admin_login),
     )
-    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    assert review.status_code == 200, review.text
 
-    async def create_schema() -> None:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-    asyncio.run(create_schema())
-
-    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
-        async with session_factory() as session:
-            yield session
-
-    async def override_current_user() -> object:
-        class User:
-            id = "admin-user-1"
-            role = "admin"
-
-        return User()
-
-    app = FastAPI(title="Pharmacy Verification Test App")
-    app.include_router(router)
-    app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_current_user] = override_current_user
-
-    with TestClient(app) as test_client:
-        yield test_client
-
-    app.dependency_overrides.clear()
+    public = client.get("/api/v1/pharmacies/")
+    assert public.status_code == 200
+    assert public.json()[0]["verified"] is True
+    assert public.json()[0]["name"] == "DrugSpot Pharmacy"
 
 
-def test_pharmacy_and_medication_happy_path(client: TestClient) -> None:
+def test_patient_cannot_access_verification_queue(api) -> None:
+    client, _ = api
+    patient = register_patient(client, email="queue@example.com", phone="+2348077777777")
+    assert client.get("/api/v1/admin/verifications/", headers=auth_header(patient)).status_code == 403
+
+
+def test_approval_requires_a_license(api) -> None:
+    client, create_user = api
+    owner = register_patient(client, email="unlicensed@example.com", phone="+2348088888888")
     pharmacy = client.post(
-        "/pharmacy/pharmacies",
-        json={
-            "name": "DrugSpot Pharmacy",
-            "address": "12 Marina Road",
-            "city": "Lagos",
-            "state": "Lagos",
-            "country": "Nigeria",
-            "phone_number": "+2348000000000",
-            "email": "hello@drugspot.ng",
-        },
+        "/api/v1/pharmacy/applications/",
+        json={**application_payload("Unlicensed Pharmacy"), "email": "unlicensed@drugspot.ng"},
+        headers=auth_header(owner),
+    ).json()
+    asyncio.run(create_user(email="admin2@example.com", phone="+2348099999999", role=UserRole.PLATFORM_ADMIN))
+    admin = client.post(
+        "/api/v1/auth/login/", json={"email": "admin2@example.com", "password": "StrongPass123!"}
+    ).json()
+    response = client.patch(
+        f"/api/v1/admin/verifications/{pharmacy['id']}/",
+        json={"decision": "approved"},
+        headers=auth_header(admin),
     )
-    assert pharmacy.status_code == 201, pharmacy.text
-    pharmacy_id = pharmacy.json()["id"]
-
-    medication = client.post(
-        "/pharmacy/medications",
-        json={
-            "pharmacy_id": pharmacy_id,
-            "name": "Paracetamol",
-            "generic_name": "Acetaminophen",
-            "dosage_form": "tablet",
-            "strength": "500mg",
-            "instructions": "Take one tablet every 8 hours as directed.",
-        },
-    )
-    assert medication.status_code == 201, medication.text
-    medication_id = medication.json()["id"]
-
-    schedule = client.post(
-        f"/pharmacy/medications/{medication_id}/schedules",
-        json={
-            "label": "Morning dose",
-            "frequency": "daily",
-            "time_of_day": "08:00",
-            "start_date": "2026-09-01T08:00:00Z",
-            "end_date": "2026-09-30T08:00:00Z",
-            "notes": "Take after breakfast.",
-        },
-    )
-    assert schedule.status_code == 201, schedule.text
-    assert schedule.json()["label"] == "Morning dose"
-
-
-def test_non_admin_permission_denied(client: TestClient) -> None:
-    async def override_patient_user() -> object:
-        class User:
-            id = "patient-user-1"
-            role = "patient"
-
-        return User()
-
-    client.app.dependency_overrides[get_current_user] = override_patient_user
-    response = client.post(
-        "/pharmacy/pharmacies",
-        json={
-            "name": "Patient Pharmacy",
-            "address": "1 Main Road",
-            "city": "Abuja",
-            "state": "FCT",
-            "country": "Nigeria",
-        },
-    )
-    assert response.status_code == 403, response.text
-    assert "Access denied" in response.json()["detail"]
-
-
-def test_validation_failure_for_invalid_schedule(client: TestClient) -> None:
-    pharmacy = client.post(
-        "/pharmacy/pharmacies",
-        json={
-            "name": "Schedule Test Pharmacy",
-            "city": "Kaduna",
-            "state": "Kaduna",
-            "country": "Nigeria",
-        },
-    )
-    med = client.post(
-        "/pharmacy/medications",
-        json={
-            "pharmacy_id": pharmacy.json()["id"],
-            "name": "Vitamin C",
-            "dosage_form": "capsule",
-            "strength": "250mg",
-        },
-    )
-
-    response = client.post(
-        f"/pharmacy/medications/{med.json()['id']}/schedules",
-        json={
-            "label": "Invalid schedule",
-            "frequency": "bad_value",
-            "start_date": "2026-10-10T00:00:00Z",
-            "end_date": "2026-10-01T00:00:00Z",
-        },
-    )
-    assert response.status_code == 422, response.text
+    assert response.status_code == 409
