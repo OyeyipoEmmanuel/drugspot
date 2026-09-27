@@ -22,8 +22,12 @@ export const queryKeys = {
   },
   refills: ["refills"] as const,
   verifications: ["admin", "verifications"] as const,
+  pharmacyApplication: ["pharmacy", "application"] as const,
+  pharmacistApplication: ["pharmacist", "application"] as const,
+  pharmacistVerifications: ["admin", "pharmacist-verifications"] as const,
   preorders: ["preorders"] as const,
   pharmacyWorkspace: {
+    access: ["pharmacy-workspace", "access"] as const,
     dashboard: ["pharmacy-workspace", "dashboard"] as const,
     orders: ["pharmacy-workspace", "orders"] as const,
     inventory: ["pharmacy-workspace", "inventory"] as const,

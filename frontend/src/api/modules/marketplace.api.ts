@@ -1,9 +1,10 @@
 import { api } from "@/api/API";
 import { endpoints } from "@/api/endpoints";
+import { useLiveBackend } from "@/api/mode";
 import { mockMarketplace } from "@/mocks/mock-marketplace";
 import type { MarketplaceFilters, Pharmacy, Product } from "@/types/marketplace";
 
-const useMocks = import.meta.env.VITE_USE_MOCK_API !== "false";
+const useMocks = !useLiveBackend;
 
 export const marketplaceApi = {
   listProducts(filters: MarketplaceFilters = {}) {
@@ -16,11 +17,16 @@ export const marketplaceApi = {
     return useMocks ? mockMarketplace.product(id) : api.get<Product>(endpoints.products.detail(id));
   },
   listPharmacies() {
-    return useMocks ? mockMarketplace.listPharmacies() : api.get<Pharmacy[]>(endpoints.pharmacies.list);
+    return useLiveBackend
+      ? api.get<Pharmacy[]>(endpoints.pharmacies.list)
+      : mockMarketplace.listPharmacies();
   },
-  pharmacy(id: string) {
-    return useMocks
-      ? mockMarketplace.pharmacy(id)
-      : api.get<{ pharmacy: Pharmacy; products: Product[] }>(endpoints.pharmacies.detail(id));
+  async pharmacy(id: string) {
+    if (!useLiveBackend) return mockMarketplace.pharmacy(id);
+    const [pharmacy, products] = await Promise.all([
+      api.get<Pharmacy>(endpoints.pharmacies.detail(id)),
+      api.get<Product[]>(endpoints.products.list),
+    ]);
+    return { pharmacy, products: products.filter((product) => product.offers.some((offer) => offer.pharmacyId === id)) };
   },
 };

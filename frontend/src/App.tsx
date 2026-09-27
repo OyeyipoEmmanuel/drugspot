@@ -6,13 +6,14 @@ import { AdminLayout } from "@/layouts/admin-layout";
 import { AuthLayout } from "@/layouts/auth-layout";
 import { DashboardLayout } from "@/layouts/dashboard-layout";
 import { PatientLayout } from "@/layouts/patient-layout";
-import { GuestOnly, RequireAuth } from "@/routes/route-guards";
+import { GuestOnly, RequireApprovedPharmacy, RequireAuth } from "@/routes/route-guards";
 
 const AdminPage = lazy(() => import("@/pages/admin-page").then((module) => ({ default: module.AdminPage })));
 const ForgotPasswordPage = lazy(() => import("@/pages/auth/forgot-password-page").then((module) => ({ default: module.ForgotPasswordPage })));
 const LoginPage = lazy(() => import("@/pages/auth/login-page").then((module) => ({ default: module.LoginPage })));
 const OnboardingPage = lazy(() => import("@/pages/auth/onboarding-page").then((module) => ({ default: module.OnboardingPage })));
 const RegisterPage = lazy(() => import("@/pages/auth/register-page").then((module) => ({ default: module.RegisterPage })));
+const RegisterPharmacyPage = lazy(() => import("@/pages/auth/register-pharmacy-page").then((module) => ({ default: module.RegisterPharmacyPage })));
 const WelcomePage = lazy(() => import("@/pages/auth/welcome-page").then((module) => ({ default: module.WelcomePage })));
 const DashboardPage = lazy(() => import("@/pages/dashboard-page").then((module) => ({ default: module.DashboardPage })));
 const HomePage = lazy(() => import("@/pages/home-page").then((module) => ({ default: module.HomePage })));
@@ -32,10 +33,12 @@ const PharmacistPage = lazy(() => import("@/pages/pharmacist/pharmacist-page").t
 const NewConversationPage = lazy(() => import("@/pages/pharmacist/new-conversation-page").then((module) => ({ default: module.NewConversationPage })));
 const ConversationPage = lazy(() => import("@/pages/pharmacist/conversation-page").then((module) => ({ default: module.ConversationPage })));
 const PharmacistInboxPage = lazy(() => import("@/pages/pharmacist/pharmacist-inbox-page").then((module) => ({ default: module.PharmacistInboxPage })));
+const PharmacistApplicationPage = lazy(() => import("@/pages/pharmacist/pharmacist-application-page").then((module) => ({ default: module.PharmacistApplicationPage })));
 const PharmacyOrdersPage = lazy(() => import("@/pages/pharmacy/pharmacy-orders-page").then((module) => ({ default: module.PharmacyOrdersPage })));
 const InventoryPage = lazy(() => import("@/pages/pharmacy/inventory-page").then((module) => ({ default: module.InventoryPage })));
 const CustomersPage = lazy(() => import("@/pages/pharmacy/customers-page").then((module) => ({ default: module.CustomersPage })));
 const RefillRequestsPage = lazy(() => import("@/pages/pharmacy/refill-requests-page").then((module) => ({ default: module.RefillRequestsPage })));
+const PharmacyApplicationPage = lazy(() => import("@/pages/pharmacy/pharmacy-application-page").then((module) => ({ default: module.PharmacyApplicationPage })));
 const PlaceholderPage = lazy(() => import("@/pages/placeholder-page").then((module) => ({ default: module.PlaceholderPage })));
 const ProfilePage = lazy(() => import("@/pages/profile-page").then((module) => ({ default: module.ProfilePage })));
 const UnauthorizedPage = lazy(() => import("@/pages/unauthorized-page").then((module) => ({ default: module.UnauthorizedPage })));
@@ -48,11 +51,19 @@ export default function App() {
           <Route path="welcome" element={<WelcomePage />} />
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />
+          <Route path="register/pharmacy" element={<RegisterPharmacyPage />} />
+          <Route path="register/pharmacist" element={<Navigate to="/register/pharmacy" replace />} />
           <Route path="forgot-password" element={<ForgotPasswordPage />} />
         </Route>
       </Route>
       <Route element={<RequireAuth />}>
         <Route path="onboarding" element={<OnboardingPage />} />
+      </Route>
+      <Route element={<RequireAuth roles={["pharmacy_admin"]} />}>
+        <Route path="pharmacy-application" element={<PharmacyApplicationPage />} />
+      </Route>
+      <Route element={<RequireAuth roles={["pharmacist_applicant", "pharmacist"]} />}>
+        <Route path="pharmacist-application" element={<PharmacistApplicationPage />} />
       </Route>
       <Route element={<RequireAuth roles={["patient"]} />}>
         <Route element={<PatientLayout />}>
@@ -77,14 +88,16 @@ export default function App() {
         </Route>
       </Route>
       <Route element={<RequireAuth roles={["pharmacist", "pharmacy_admin"]} />}>
-        <Route path="pharmacy" element={<DashboardLayout />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="orders" element={<PharmacyOrdersPage />} />
-          <Route path="inventory" element={<InventoryPage />} />
-          <Route path="messages" element={<PharmacistInboxPage />} />
-          <Route path="messages/:id" element={<ConversationPage />} />
-          <Route path="customers" element={<CustomersPage />} />
-          <Route path="refills" element={<RefillRequestsPage />} />
+        <Route element={<RequireApprovedPharmacy />}>
+          <Route path="pharmacy" element={<DashboardLayout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="orders" element={<PharmacyOrdersPage />} />
+            <Route path="inventory" element={<InventoryPage />} />
+            <Route path="messages" element={<PharmacistInboxPage />} />
+            <Route path="messages/:id" element={<ConversationPage />} />
+            <Route path="customers" element={<CustomersPage />} />
+            <Route path="refills" element={<RefillRequestsPage />} />
+          </Route>
         </Route>
       </Route>
       <Route element={<RequireAuth roles={["platform_admin"]} />}>
@@ -92,7 +105,7 @@ export default function App() {
           <Route index element={<AdminPage />} />
           <Route path="pharmacies" element={<PlaceholderPage />} />
           <Route path="pharmacists" element={<PlaceholderPage />} />
-          <Route path="verifications" element={<PlaceholderPage />} />
+          <Route path="verifications" element={<AdminPage />} />
         </Route>
       </Route>
       <Route path="unauthorized" element={<UnauthorizedPage />} />

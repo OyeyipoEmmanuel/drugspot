@@ -75,3 +75,18 @@ export interface InventoryUpdateInput {
   reorderLevel: number;
   unitPrice: number;
 }
+
+export interface ProductCreateInput extends InventoryUpdateInput {
+  name: string;
+  genericName?: string;
+  brand?: string;
+  category: string;
+  form?: string;
+  strength?: string;
+  packSize?: string;
+  description?: string;
+  sku: string;
+  requiresPrescription: boolean;
+  requiresPharmacistReview: boolean;
+  preorderSupported: boolean;
+}

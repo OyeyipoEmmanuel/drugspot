@@ -48,6 +48,7 @@ export function RegisterPage() {
         <Button className="w-full" size="lg" disabled={isSubmitting}>{isSubmitting && <LoaderCircle className="animate-spin" />}{t("auth.createAccount")}</Button>
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">{t("auth.haveAccount")} <Link to="/login" className="font-semibold text-primary hover:underline">{t("auth.signIn")}</Link></p>
+      <p className="mt-3 text-center text-sm text-muted-foreground">Do you operate a pharmacy? <Link to="/register/pharmacy" className="font-semibold text-primary hover:underline">Register your pharmacy</Link></p>
     </section>
   );
 }

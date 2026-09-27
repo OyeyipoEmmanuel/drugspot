@@ -5,7 +5,11 @@ export const endpoints = {
     logout: "/auth/logout/",
     refresh: "/auth/token/refresh/",
     profile: "/auth/profile/",
+    patientProfile: "/auth/profile/patient/",
     forgotPassword: "/auth/password/forgot/",
+    resetPassword: "/auth/password/reset/",
+    verifyEmail: "/auth/verify/email/",
+    verifyPhone: "/auth/verify/phone/",
     completeOnboarding: "/auth/onboarding/complete/",
   },
   medications: {
@@ -23,6 +27,9 @@ export const endpoints = {
   },
   preorders: { list: "/pre-order-requests/" },
   pharmacists: { list: "/pharmacists/", detail: (id: string) => `/pharmacists/${id}/` },
+  pharmacistApplications: {
+    current: "/pharmacists/application/",
+  },
   conversations: {
     list: "/conversations/",
     detail: (id: string) => `/conversations/${id}/`,
@@ -31,6 +38,12 @@ export const endpoints = {
   ocr: { extract: "/ocr/extractions/" },
   refills: { list: "/refill-requests/" },
   pharmacyWorkspace: {
+    register: "/pharmacy/register/",
+    access: "/pharmacy/access/",
+    application: "/pharmacy/application/",
+    applications: "/pharmacy/applications/",
+    licenses: "/pharmacy/licenses/",
+    pharmacists: "/pharmacy/pharmacists/",
     dashboard: "/pharmacy/dashboard/",
     orders: "/pharmacy/orders/",
     orderStatus: (id: string) => `/pharmacy/orders/${id}/status/`,
@@ -40,5 +53,10 @@ export const endpoints = {
     refills: "/pharmacy/refill-requests/",
     refillStatus: (id: string) => `/pharmacy/refill-requests/${id}/status/`,
   },
-  admin: { verifications: "/admin/verifications/" },
+  admin: {
+    verifications: "/admin/verifications/",
+    verification: (id: string) => `/admin/verifications/${id}/`,
+    pharmacistVerifications: "/admin/pharmacist-verifications/",
+    pharmacistVerification: (id: string) => `/admin/pharmacist-verifications/${id}/`,
+  },
 } as const;

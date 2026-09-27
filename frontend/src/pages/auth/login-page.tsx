@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
+import { useLiveBackend } from "@/api/mode";
 import { useAuth } from "@/providers/auth-provider";
 
 const schema = z.object({
@@ -22,14 +23,14 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [submitError, setSubmitError] = useState("");
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { email: "patient@drugspot.ng", password: "Password123!" } });
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: useLiveBackend ? { email: "", password: "" } : { email: "patient@drugspot.ng", password: "Password123!" } });
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError("");
     try {
       const session = await login(values);
       const requestedPath = (location.state as { from?: string } | null)?.from;
-      const fallback = session.user.role === "platform_admin" ? "/admin" : session.user.role === "patient" ? "/" : "/pharmacy";
+      const fallback = session.user.role === "platform_admin" ? "/admin" : session.user.role === "pharmacist_applicant" ? "/pharmacist-application" : session.user.role === "pharmacy_admin" && useLiveBackend ? "/pharmacy-application" : session.user.role === "patient" ? "/" : "/pharmacy";
       navigate(requestedPath ?? fallback, { replace: true });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : t("auth.signInError"));
@@ -49,7 +50,8 @@ export function LoginPage() {
         <Button className="w-full" size="lg" disabled={isSubmitting}>{isSubmitting && <LoaderCircle className="animate-spin" />}{t("auth.signIn")}</Button>
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">{t("auth.noAccount")} <Link to="/register" className="font-semibold text-primary hover:underline">{t("auth.createAccount")}</Link></p>
-      <p className="mt-5 rounded-xl bg-muted p-3 text-xs leading-5 text-muted-foreground">{t("auth.demoHint")}</p>
+      <p className="mt-3 text-center text-sm text-muted-foreground"><Link to="/register/pharmacy" className="font-semibold text-primary hover:underline">Register your pharmacy</Link></p>
+      {!useLiveBackend && <p className="mt-5 rounded-xl bg-muted p-3 text-xs leading-5 text-muted-foreground">{t("auth.demoHint")}</p>}
     </section>
   );
 }
