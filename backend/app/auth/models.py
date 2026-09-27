@@ -13,11 +13,9 @@ from enum import Enum
 
 from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.orm import DeclarativeBase
+from app.database import Base
 
 
-class Base(DeclarativeBase):
-    """Base class for all SQLAlchemy models in this module."""
 
 
 class UserRole(str, Enum):
