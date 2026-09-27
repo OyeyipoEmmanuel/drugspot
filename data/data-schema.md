@@ -51,6 +51,9 @@ ERDiagram
         int pharmacy_id FK
         int product_id FK
         int stock_level
+        decimal price
+        date expiration_date
+        string batch_number
     }
     ORDER {
         int order_id PK
