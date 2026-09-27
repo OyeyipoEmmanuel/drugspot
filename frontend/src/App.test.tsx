@@ -63,6 +63,28 @@ describe("DrugSpot patient flows", () => {
     expect(await screen.findByText("Can I take this medicine after breakfast?")).toBeInTheDocument();
     await user.type(screen.getByLabelText(/^message$/i), "Thank you, I will follow the prescription instructions.");
     await user.click(screen.getByRole("button", { name: /send message/i }));
+    expect(await screen.findByRole("button", { name: /sending/i })).toBeDisabled();
+    await waitFor(() => expect(screen.queryByRole("button", { name: /sending/i })).not.toBeInTheDocument());
     expect(await screen.findByText("Thank you, I will follow the prescription instructions.")).toBeInTheDocument();
+  }, 15_000);
+
+  it("opens the pharmacy workspace and updates inventory", async () => {
+    localStorage.clear();
+    window.history.pushState({}, "", "/login");
+    const user = userEvent.setup();
+    render(<AppProviders><App /></AppProviders>);
+    const email = await screen.findByLabelText(/email address/i);
+    await user.clear(email);
+    await user.type(email, "pharmacy@drugspot.ng");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    expect(await screen.findByRole("heading", { name: /pharmacy workspace/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: /^inventory$/i }));
+    expect(await screen.findByRole("heading", { name: /^inventory$/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /edit amoxicillin/i }));
+    const stock = screen.getByLabelText(/^stock$/i);
+    await user.clear(stock);
+    await user.type(stock, "20");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(await screen.findByText("20")).toBeInTheDocument();
   }, 15_000);
 });

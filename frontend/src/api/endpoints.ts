@@ -30,5 +30,15 @@ export const endpoints = {
   },
   ocr: { extract: "/ocr/extractions/" },
   refills: { list: "/refill-requests/" },
+  pharmacyWorkspace: {
+    dashboard: "/pharmacy/dashboard/",
+    orders: "/pharmacy/orders/",
+    orderStatus: (id: string) => `/pharmacy/orders/${id}/status/`,
+    inventory: "/pharmacy/inventory/",
+    inventoryItem: (id: string) => `/pharmacy/inventory/${id}/`,
+    customers: "/pharmacy/customers/",
+    refills: "/pharmacy/refill-requests/",
+    refillStatus: (id: string) => `/pharmacy/refill-requests/${id}/status/`,
+  },
   admin: { verifications: "/admin/verifications/" },
 } as const;

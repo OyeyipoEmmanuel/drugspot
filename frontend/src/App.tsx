@@ -32,6 +32,10 @@ const PharmacistPage = lazy(() => import("@/pages/pharmacist/pharmacist-page").t
 const NewConversationPage = lazy(() => import("@/pages/pharmacist/new-conversation-page").then((module) => ({ default: module.NewConversationPage })));
 const ConversationPage = lazy(() => import("@/pages/pharmacist/conversation-page").then((module) => ({ default: module.ConversationPage })));
 const PharmacistInboxPage = lazy(() => import("@/pages/pharmacist/pharmacist-inbox-page").then((module) => ({ default: module.PharmacistInboxPage })));
+const PharmacyOrdersPage = lazy(() => import("@/pages/pharmacy/pharmacy-orders-page").then((module) => ({ default: module.PharmacyOrdersPage })));
+const InventoryPage = lazy(() => import("@/pages/pharmacy/inventory-page").then((module) => ({ default: module.InventoryPage })));
+const CustomersPage = lazy(() => import("@/pages/pharmacy/customers-page").then((module) => ({ default: module.CustomersPage })));
+const RefillRequestsPage = lazy(() => import("@/pages/pharmacy/refill-requests-page").then((module) => ({ default: module.RefillRequestsPage })));
 const PlaceholderPage = lazy(() => import("@/pages/placeholder-page").then((module) => ({ default: module.PlaceholderPage })));
 const ProfilePage = lazy(() => import("@/pages/profile-page").then((module) => ({ default: module.ProfilePage })));
 const UnauthorizedPage = lazy(() => import("@/pages/unauthorized-page").then((module) => ({ default: module.UnauthorizedPage })));
@@ -75,12 +79,12 @@ export default function App() {
       <Route element={<RequireAuth roles={["pharmacist", "pharmacy_admin"]} />}>
         <Route path="pharmacy" element={<DashboardLayout />}>
           <Route index element={<DashboardPage />} />
-          <Route path="orders" element={<PlaceholderPage />} />
-          <Route path="inventory" element={<PlaceholderPage />} />
+          <Route path="orders" element={<PharmacyOrdersPage />} />
+          <Route path="inventory" element={<InventoryPage />} />
           <Route path="messages" element={<PharmacistInboxPage />} />
           <Route path="messages/:id" element={<ConversationPage />} />
-          <Route path="customers" element={<PlaceholderPage />} />
-          <Route path="refills" element={<PlaceholderPage />} />
+          <Route path="customers" element={<CustomersPage />} />
+          <Route path="refills" element={<RefillRequestsPage />} />
         </Route>
       </Route>
       <Route element={<RequireAuth roles={["platform_admin"]} />}>
