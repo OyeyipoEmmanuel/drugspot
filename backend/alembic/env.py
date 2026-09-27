@@ -4,6 +4,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from app.database import Base
 
+
 from app.auth import models as auth_models
 from app.pharmacy_verification import models as pharmacy_models
 from app.medication import models as medication_models
