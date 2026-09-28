@@ -1,6 +1,5 @@
 """Public marketplace, patient ordering, and pharmacy workspace routes."""
 
-from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
@@ -13,6 +12,7 @@ from ..auth.deps import require_roles
 from ..auth.models import User, UserRole
 from ..database import get_db
 from ..pharmacy_verification.models import Pharmacy
+from ..storage import PRODUCT_IMAGE_DIRECTORY
 from .models import Order, PreOrderRequest, Product, RefillRequest
 from .nafdac import NafdacClient, get_nafdac_client
 from .schemas import (
@@ -53,9 +53,6 @@ PRODUCT_IMAGE_TYPES = {
     "image/webp": (".webp", lambda data: data.startswith(b"RIFF") and data[8:12] == b"WEBP"),
 }
 MAX_PRODUCT_IMAGE_BYTES = 5 * 1024 * 1024
-PRODUCT_IMAGE_DIRECTORY = Path(__file__).resolve().parents[2] / "uploads" / "product-images"
-
-
 @public_router.get("/products/")
 async def products(
     search: str | None = None,
