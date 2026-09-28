@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     auth_secret: str = "development-only-secret-change-me-now"
     access_token_minutes: int = Field(default=15, ge=5, le=1440)
     refresh_token_days: int = Field(default=30, ge=1, le=90)
+    auto_fulfill_non_prescription: bool = False
     cors_origins: str = (
         "https://drugspot.vercel.app,"
         "http://localhost:5173,http://127.0.0.1:5173,"

@@ -22,20 +22,26 @@ class FakeNafdacClient:
     async def verify(self, *, nafdac_number: str, product_name: str, strength: str = "") -> NafdacVerificationResult:
         del strength
         normalized_number = nafdac_number.replace(" ", "").upper()
-        name_matches = product_name.strip().lower() in {"ac-drex", "ac-drex tablet"}
-        verified = normalized_number == "A11-0551" and name_matches
+        normalized_name = product_name.strip().lower()
+        is_ac_drex = normalized_number == "A11-0551"
+        is_test_prescription = normalized_number == "A11-0552"
+        name_matches = (
+            is_ac_drex and normalized_name in {"ac-drex", "ac-drex tablet"}
+        ) or (is_test_prescription and normalized_name == "prescription tablet")
+        verified = (is_ac_drex or is_test_prescription) and name_matches
+        official_name = "Prescription Tablet" if is_test_prescription else "AC-Drex Tablet"
         return NafdacVerificationResult(
             verified=verified,
             reason=(
                 "The registration number and product name match the NAFDAC Greenbook."
                 if verified
-                else 'The NAFDAC number belongs to "AC-Drex Tablet", not the submitted product name.'
+                else f'The NAFDAC number belongs to "{official_name}", not the submitted product name.'
             ),
             nafdac_number=normalized_number,
-            nafdac_product_id=6647,
-            official_name="AC-Drex Tablet",
-            strength="500 mg; 30 mg",
-            pack_size="10 x 10's (in blisters)",
+            nafdac_product_id=6648 if is_test_prescription else 6647,
+            official_name=official_name,
+            strength="10 mg" if is_test_prescription else "500 mg; 30 mg",
+            pack_size="20 tablets" if is_test_prescription else "10 x 10's (in blisters)",
             description="Tablet",
             composition="Paracetamol 500 mg, Caffeine 30 mg",
             ingredient="Paracetamol; Caffeine",

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..auth.models import User, UserRole
+from ..config import get_settings
 from ..models import add_audit_log
 from ..pharmacy_verification.models import Pharmacist, Pharmacy, VerificationStatus
 from ..pharmacy_verification.service import to_public
@@ -321,7 +322,10 @@ async def checkout(session: AsyncSession, patient: User, payload: CheckoutInput)
         )
     add_audit_log(session, actor_id=patient.id, entity_type="order", entity_id=order.id, action="placed")
     await session.commit()
-    return await get_order(session, order.id, patient.id)
+    order = await get_order(session, order.id, patient.id)
+    if get_settings().auto_fulfill_non_prescription:
+        order = await auto_fulfill_non_prescription_order(session, pharmacy, order)
+    return order
 
 
 async def get_order(session: AsyncSession, order_id: str, patient_id: str | None = None) -> Order:
@@ -415,7 +419,7 @@ ALLOWED_TRANSITIONS = {
 
 
 async def change_order_status(
-    session: AsyncSession, pharmacy: Pharmacy, actor: User, order_id: str, next_status: OrderStatus
+    session: AsyncSession, pharmacy: Pharmacy, actor: User | None, order_id: str, next_status: OrderStatus
 ) -> Order:
     order = await session.scalar(
         select(Order).options(selectinload(Order.items)).where(Order.id == order_id, Order.pharmacy_id == pharmacy.id)
@@ -436,10 +440,34 @@ async def change_order_status(
                 inventory_item.stock_count += item.quantity
     order.status = next_status
     add_audit_log(
-        session, actor_id=actor.id, entity_type="order", entity_id=order.id, action=f"status_{next_status.value}"
+        session,
+        actor_id=actor.id if actor else None,
+        entity_type="order",
+        entity_id=order.id,
+        action=f"status_{next_status.value}",
     )
     await session.commit()
     return await get_order(session, order.id)
+
+
+async def auto_fulfill_non_prescription_order(
+    session: AsyncSession, pharmacy: Pharmacy, order: Order
+) -> Order:
+    if order.status != OrderStatus.PLACED or any(item.requires_prescription for item in order.items):
+        return order
+    if order.payment_status != PaymentStatus.PAID and order.payment_method != "cash_on_delivery":
+        return order
+
+    status_path = [OrderStatus.ACCEPTED, OrderStatus.PREPARING]
+    status_path.append(
+        OrderStatus.OUT_FOR_DELIVERY
+        if order.fulfillment_method == "delivery"
+        else OrderStatus.READY_FOR_PICKUP
+    )
+    status_path.append(OrderStatus.COMPLETED)
+    for next_status in status_path:
+        order = await change_order_status(session, pharmacy, None, order.id, next_status)
+    return order
 
 
 async def customer_payloads(session: AsyncSession, orders: list[Order]) -> list[dict]:

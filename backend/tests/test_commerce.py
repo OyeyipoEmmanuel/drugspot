@@ -1,9 +1,132 @@
 import asyncio
 
 from app.auth.models import UserRole
+from app.config import get_settings
 
 from .conftest import auth_header, register_patient
 from .test_pharmacy_verification import vendor_registration_payload
+
+
+def test_auto_fulfills_non_prescription_cod_orders_only(api, monkeypatch, request) -> None:
+    client, create_user = api
+    monkeypatch.setenv("AUTO_FULFILL_NON_PRESCRIPTION", "true")
+    get_settings.cache_clear()
+    request.addfinalizer(get_settings.cache_clear)
+
+    vendor = client.post("/api/v1/pharmacy/register/", json=vendor_registration_payload()).json()
+    application = client.get("/api/v1/pharmacy/application/", headers=auth_header(vendor)).json()
+    asyncio.run(
+        create_user(
+            email="auto-fulfill-admin@example.com",
+            phone="+2348111111121",
+            role=UserRole.PLATFORM_ADMIN,
+        )
+    )
+    admin = client.post(
+        "/api/v1/auth/login/",
+        json={"email": "auto-fulfill-admin@example.com", "password": "StrongPass123!"},
+    ).json()
+    approval = client.patch(
+        f"/api/v1/admin/verifications/{application['id']}/",
+        json={"decision": "approved", "notes": "Approved for auto-fulfillment test"},
+        headers=auth_header(admin),
+    )
+    assert approval.status_code == 200, approval.text
+
+    non_prescription = {
+        "name": "AC-Drex Tablet",
+        "genericName": "Paracetamol; Caffeine",
+        "brand": "A.C. Drugs Ltd",
+        "category": "Pain relief",
+        "form": "Tablet",
+        "strength": "500 mg; 30 mg",
+        "packSize": "10 x 10's (in blisters)",
+        "description": "Tablet",
+        "imageUrl": "https://example.com/ac-drex.jpg",
+        "sku": "AUTO-FULFILL-NON-RX",
+        "nafdacNumber": "A11-0551",
+        "stockCount": 12,
+        "reorderLevel": 2,
+        "unitPrice": 3500,
+        "requiresPrescription": False,
+    }
+    prescription = {
+        **non_prescription,
+        "name": "Prescription Tablet",
+        "genericName": "Example Ingredient",
+        "brand": "Example Pharma",
+        "category": "Prescription medicine",
+        "strength": "10 mg",
+        "packSize": "20 tablets",
+        "sku": "AUTO-FULFILL-RX",
+        "nafdacNumber": "A11-0552",
+        "requiresPrescription": True,
+    }
+    for product_payload in (non_prescription, prescription):
+        response = client.post(
+            "/api/v1/pharmacy/inventory/",
+            json=product_payload,
+            headers=auth_header(vendor),
+        )
+        assert response.status_code == 201, response.text
+
+    products = client.get("/api/v1/products/").json()
+    pharmacy = next(item for item in client.get("/api/v1/pharmacies/").json() if item["id"] == application["id"])
+    product_by_name = {item["name"]: item for item in products}
+    patient = register_patient(client, email="auto-fulfill-patient@example.com", phone="+2348222222231")
+
+    def checkout_item(name: str) -> dict:
+        product = product_by_name[name]
+        offer = next(item for item in product["offers"] if item["pharmacyId"] == pharmacy["id"])
+        return {"product": product, "offer": offer, "pharmacy": pharmacy, "quantity": 1}
+
+    order_payload = {
+        "fulfillmentMethod": "delivery",
+        "paymentMethod": "cash_on_delivery",
+        "recipientName": "Ada Okafor",
+        "phone": "+2348222222231",
+        "deliveryAddress": "12 Marina Road, Lagos",
+    }
+    completed_response = client.post(
+        "/api/v1/orders/checkout/",
+        json={**order_payload, "items": [checkout_item("AC-Drex Tablet")]},
+        headers=auth_header(patient),
+    )
+    assert completed_response.status_code == 201, completed_response.text
+    completed_order = completed_response.json()
+    assert completed_order["status"] == "completed"
+    assert [entry["status"] for entry in completed_order["timeline"]] == [
+        "placed",
+        "accepted",
+        "preparing",
+        "out_for_delivery",
+        "completed",
+    ]
+    assert all(entry["complete"] for entry in completed_order["timeline"])
+    history = client.get("/api/v1/orders/", headers=auth_header(patient))
+    assert history.status_code == 200
+    history_order = next(item for item in history.json() if item["id"] == completed_order["id"])
+    assert history_order["status"] == "completed"
+    assert [entry["status"] for entry in history_order["timeline"]] == [
+        "placed",
+        "accepted",
+        "preparing",
+        "out_for_delivery",
+        "completed",
+    ]
+    assert all(entry["complete"] for entry in history_order["timeline"])
+
+    mixed_response = client.post(
+        "/api/v1/orders/checkout/",
+        json={
+            **order_payload,
+            "items": [checkout_item("AC-Drex Tablet"), checkout_item("Prescription Tablet")],
+            "prescriptionFileName": "prescription.pdf",
+        },
+        headers=auth_header(patient),
+    )
+    assert mixed_response.status_code == 201, mixed_response.text
+    assert mixed_response.json()["status"] == "pharmacy_review"
 
 
 def test_live_catalogue_checkout_and_fulfilment(api) -> None:
