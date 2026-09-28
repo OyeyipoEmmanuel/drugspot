@@ -124,3 +124,115 @@ def test_live_catalogue_checkout_and_fulfilment(api) -> None:
     assert customers[0]["orderCount"] == 1
     dashboard = client.get("/api/v1/pharmacy/dashboard/", headers=auth_header(vendor)).json()
     assert dashboard["openOrders"] == 1
+
+
+def test_same_product_can_have_multiple_pharmacy_offers(api) -> None:
+    client, create_user = api
+
+    def register_vendor(email: str, phone: str, pharmacy_name: str, license_number: str):
+        pharmacist_license_number = f"PCN-PHARM-{abs(hash(license_number)) % 1000000:06d}"
+        vendor = client.post(
+            "/api/v1/pharmacy/register/",
+            json={
+                **vendor_registration_payload(),
+                "email": email,
+                "phone": phone,
+                "pharmacy": {**vendor_registration_payload()["pharmacy"], "name": pharmacy_name},
+                "pharmacyLicense": {**vendor_registration_payload()["pharmacyLicense"], "licenseNumber": license_number},
+                "pharmacistLicenseNumber": pharmacist_license_number,
+            },
+        )
+        assert vendor.status_code == 201, vendor.text
+        vendor_info = vendor.json()
+        application = client.get("/api/v1/pharmacy/application/", headers=auth_header(vendor_info)).json()
+        reviewer_phone = "+23490" + str(abs(hash(license_number)) % 1000000000)
+        asyncio.run(
+            create_user(
+                email=f"reviewer-{license_number.lower()}@example.com",
+                phone=reviewer_phone,
+                role=UserRole.PLATFORM_ADMIN,
+            )
+        )
+        admin = client.post(
+            "/api/v1/auth/login/",
+            json={
+                "email": f"reviewer-{license_number.lower()}@example.com",
+                "password": "StrongPass123!",
+            },
+        ).json()
+        approval = client.patch(
+            f"/api/v1/admin/verifications/{application['id']}/",
+            json={"decision": "approved", "notes": "Approved for catalog testing"},
+            headers=auth_header(admin),
+        )
+        assert approval.status_code == 200, approval.text
+        return vendor_info
+
+    vendor_one = register_vendor("vendor-one@example.com", "+2348111111111", "Pharmix Lagos", "PCN-LAG-1001")
+    vendor_two = register_vendor("vendor-two@example.com", "+2348222222222", "Pharmix Abuja", "PCN-ABJ-1002")
+
+    product_payload = {
+        "name": "AC-Drex Tablet",
+        "genericName": "Paracetamol; Caffeine",
+        "brand": "A.C. Drugs Ltd",
+        "category": "Pain relief",
+        "form": "Tablet",
+        "strength": "500 mg; 30 mg",
+        "packSize": "10 x 10's (in blisters)",
+        "description": "Tablet",
+        "imageUrl": "https://example.com/ac-drex.jpg",
+        "sku": "ACD-MULTI-PRICE-001",
+        "nafdacNumber": "A11-0551",
+        "stockCount": 10,
+        "reorderLevel": 2,
+        "unitPrice": 2500,
+        "requiresPrescription": False,
+        "requiresPharmacistReview": False,
+    }
+
+    first_listing = client.post("/api/v1/pharmacy/inventory/", json=product_payload, headers=auth_header(vendor_one))
+    assert first_listing.status_code == 201, first_listing.text
+    product_id = first_listing.json()["id"]
+
+    second_listing = client.post(
+        "/api/v1/pharmacy/inventory/",
+        json={**product_payload, "stockCount": 7, "unitPrice": 3200, "reorderLevel": 3},
+        headers=auth_header(vendor_two),
+    )
+    assert second_listing.status_code == 201, second_listing.text
+    assert second_listing.json()["id"] == product_id
+
+    products = client.get("/api/v1/products/").json()
+    assert len(products) == 1
+    assert len(products[0]["offers"]) == 2
+
+    vendor_two_offer = next(item for item in products[0]["offers"] if item["pharmacyId"] == vendor_two["pharmacyId"])
+    pharmacies = client.get("/api/v1/pharmacies/").json()
+    vendor_two_pharmacy = next(item for item in pharmacies if item["id"] == vendor_two["pharmacyId"])
+
+    patient = register_patient(client, email="multi-offer-patient@example.com", phone="+2348333333333")
+    checkout = client.post(
+        "/api/v1/orders/checkout/",
+        json={
+            "items": [
+                {
+                    "product": products[0],
+                    "offer": vendor_two_offer,
+                    "pharmacy": vendor_two_pharmacy,
+                    "quantity": 3,
+                }
+            ],
+            "fulfillmentMethod": "pickup",
+            "paymentMethod": "card",
+            "recipientName": "Ada Okafor",
+            "phone": "+2348333333333",
+        },
+        headers=auth_header(patient),
+    )
+    assert checkout.status_code == 201, checkout.text
+    assert checkout.json()["total"] == 9600
+
+    vendor_two_inventory = client.get("/api/v1/pharmacy/inventory/", headers=auth_header(vendor_two)).json()
+    assert vendor_two_inventory[0]["stockCount"] == 4
+    vendor_one_inventory = client.get("/api/v1/pharmacy/inventory/", headers=auth_header(vendor_one)).json()
+    assert vendor_one_inventory[0]["stockCount"] == 10

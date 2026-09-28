@@ -57,6 +57,9 @@ class Pharmacy(Base):
     verification_records: Mapped[list[VerificationRecord]] = relationship(
         back_populates="pharmacy", cascade="all, delete-orphan"
     )
+    inventory_items: Mapped[list["InventoryItem"]] = relationship(
+        back_populates="pharmacy", cascade="all, delete-orphan"
+    )
 
 
 class Pharmacist(Base):

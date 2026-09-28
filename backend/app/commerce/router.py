@@ -13,7 +13,7 @@ from ..auth.models import User, UserRole
 from ..database import get_db
 from ..pharmacy_verification.models import Pharmacy
 from ..storage import PRODUCT_IMAGE_DIRECTORY
-from .models import Order, PreOrderRequest, Product, RefillRequest
+from .models import InventoryItem, Order, PreOrderRequest, Product, RefillRequest
 from .nafdac import NafdacClient, get_nafdac_client
 from .schemas import (
     CheckoutInput,
@@ -124,35 +124,38 @@ async def request_preorder(
     db: AsyncSession = Depends(get_db),
     patient: User = Depends(require_roles(UserRole.PATIENT)),
 ):
-    product = await db.scalar(
-        select(Product).where(
-            Product.id == payload.product_id,
-            Product.pharmacy_id == payload.pharmacy_id,
-            Product.preorder_supported.is_(True),
+    inventory_item = await db.scalar(
+        select(InventoryItem).where(
+            InventoryItem.product_id == payload.product_id,
+            InventoryItem.pharmacy_id == payload.pharmacy_id,
+            InventoryItem.preorder_supported.is_(True),
         )
     )
-    if product is None:
+    if inventory_item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pre-order is not available")
+    product = await db.get(Product, payload.product_id)
+    if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     request = PreOrderRequest(
         patient_user_id=patient.id,
         product_id=product.id,
-        pharmacy_id=product.pharmacy_id,
+        pharmacy_id=inventory_item.pharmacy_id,
         quantity=payload.quantity,
     )
     db.add(request)
     await db.commit()
     await db.refresh(request)
-    pharmacy = await db.get(Pharmacy, product.pharmacy_id)
+    pharmacy = await db.get(Pharmacy, inventory_item.pharmacy_id)
     return {
         "id": request.id,
         "productId": product.id,
         "productName": product.name,
-        "pharmacyId": product.pharmacy_id,
+        "pharmacyId": inventory_item.pharmacy_id,
         "pharmacyName": pharmacy.name,
         "quantity": request.quantity,
         "status": request.status,
         "requestedAt": request.requested_at,
-        "estimatedRestockDate": product.estimated_restock_date,
+        "estimatedRestockDate": inventory_item.estimated_restock_date,
     }
 
 
@@ -183,10 +186,17 @@ async def workspace_dashboard(context=Depends(workspace_context)):
 @workspace_router.get("/inventory/")
 async def inventory(context=Depends(workspace_context)):
     db, _, pharmacy = context
-    products = list(
-        (await db.scalars(select(Product).where(Product.pharmacy_id == pharmacy.id).order_by(Product.name))).all()
+    inventory_items = list(
+        (
+            await db.scalars(
+                select(InventoryItem)
+                .where(InventoryItem.pharmacy_id == pharmacy.id, InventoryItem.is_active.is_(True))
+                .options(selectinload(InventoryItem.product))
+                .order_by(InventoryItem.product_id)
+            )
+        ).all()
     )
-    return [inventory_payload(product) for product in products]
+    return [inventory_payload(item) for item in inventory_items]
 
 
 @workspace_router.post("/inventory/verify-nafdac/", response_model=NafdacVerificationResult)
@@ -251,13 +261,18 @@ async def add_inventory(
         product_name=payload.name,
         strength=payload.strength,
     )
-    return inventory_payload(await create_product(db, pharmacy, user, payload, verification))
+    product = await create_product(db, pharmacy, user, payload, verification)
+    inventory_item = await db.scalar(
+        select(InventoryItem).where(InventoryItem.product_id == product.id, InventoryItem.pharmacy_id == pharmacy.id)
+    )
+    return inventory_payload(inventory_item)
 
 
 @workspace_router.patch("/inventory/{product_id}/")
 async def patch_inventory(product_id: str, payload: InventoryUpdate, context=Depends(workspace_context)):
     db, user, pharmacy = context
-    return inventory_payload(await update_inventory(db, pharmacy, user, product_id, payload))
+    inventory_item = await update_inventory(db, pharmacy, user, product_id, payload)
+    return inventory_payload(inventory_item)
 
 
 @workspace_router.get("/orders/")

@@ -49,7 +49,6 @@ class Product(Base):
     __tablename__ = "products"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    pharmacy_id: Mapped[str] = mapped_column(ForeignKey("pharmacies.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     generic_name: Mapped[str] = mapped_column(String(200), default="", nullable=False)
     brand: Mapped[str] = mapped_column(String(160), default="", nullable=False)
@@ -68,11 +67,26 @@ class Product(Base):
     nafdac_manufacturer: Mapped[str] = mapped_column(String(255), default="", nullable=False)
     nafdac_approval_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     nafdac_expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    requires_prescription: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    requires_pharmacist_review: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+    inventory_items: Mapped[list["InventoryItem"]] = relationship(back_populates="product", cascade="all, delete-orphan")
+
+
+class InventoryItem(Base):
+    __tablename__ = "inventory_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True, nullable=False)
+    pharmacy_id: Mapped[str] = mapped_column(ForeignKey("pharmacies.id", ondelete="CASCADE"), index=True, nullable=False)
     stock_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     reorder_level: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    requires_prescription: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    requires_pharmacist_review: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     preorder_supported: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     estimated_restock_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -80,6 +94,11 @@ class Product(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
     )
+
+    product: Mapped[Product] = relationship(back_populates="inventory_items")
+    pharmacy: Mapped["Pharmacy"] = relationship("Pharmacy", back_populates="inventory_items")
+
+    __table_args__ = ({"sqlite_autoincrement": True},)
 
 
 class Order(Base):
