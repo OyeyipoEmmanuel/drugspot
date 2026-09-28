@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -23,7 +24,7 @@ export function OnboardingPage() {
   const finish = async () => { setSaving(true); await completeOnboarding(); navigate("/home", { replace: true }); };
   return (
     <div className="min-h-screen bg-background p-4 sm:p-8">
-      <div className="mx-auto flex max-w-2xl justify-end"><Button variant="ghost" onClick={finish}><X />{t("onboarding.skip")}</Button></div>
+      <div className="mx-auto flex max-w-2xl items-center justify-between"><BackButton>Back</BackButton><Button variant="ghost" onClick={finish}><X />{t("onboarding.skip")}</Button></div>
       <main className="mx-auto grid min-h-[75vh] max-w-2xl place-items-center text-center">
         <section>
           <div className="mx-auto grid size-24 place-items-center rounded-[2rem] bg-primary text-primary-foreground shadow-xl shadow-blue-900/20"><SlideIcon className="size-11" /></div>

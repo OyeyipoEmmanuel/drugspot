@@ -1,6 +1,5 @@
 import {
   AlertTriangle,
-  ArrowLeft,
   Clock3,
   FileCheck2,
   MapPin,
@@ -12,9 +11,10 @@ import {
   Star,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { ErrorState, LoadingState } from "@/components/feedback-states";
+import { BackButton } from "@/components/back-button";
 import { VerifiedBadge } from "@/components/marketplace/verified-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,12 +77,7 @@ export function ProductDetailPage() {
   };
   return (
     <div className="space-y-6">
-      <Button asChild variant="ghost" className="-ml-3">
-        <Link to="/marketplace">
-          <ArrowLeft />
-          Back to marketplace
-        </Link>
-      </Button>
+      <BackButton>Back to marketplace</BackButton>
       <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
         <section className="rounded-3xl border bg-card p-6 shadow-sm sm:p-8">
           <div className="grid aspect-[4/3] place-items-center overflow-hidden rounded-3xl bg-gradient-to-br from-blue-50 to-blue-100 text-primary">

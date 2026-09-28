@@ -15,7 +15,8 @@ COPY . .
 RUN python -m pip install --upgrade pip \
     && python -m pip install --no-cache-dir .
 
-RUN chmod +x /app/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh \
+    && chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 8000
 

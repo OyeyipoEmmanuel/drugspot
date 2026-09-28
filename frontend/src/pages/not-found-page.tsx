@@ -1,8 +1,7 @@
-import { ArrowLeft, FileQuestion } from "lucide-react";
-import { Link } from "react-router-dom";
+import { FileQuestion } from "lucide-react";
 
+import { BackButton } from "@/components/back-button";
 import { BrandLogo } from "@/components/brand-logo";
-import { Button } from "@/components/ui/button";
 
 export function NotFoundPage() {
   return (
@@ -15,9 +14,9 @@ export function NotFoundPage() {
         <p className="mt-6 text-sm font-bold uppercase tracking-[0.2em] text-primary">404 · Page not found</p>
         <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">This page does not exist.</h1>
         <p className="mx-auto mt-4 max-w-md leading-7 text-muted-foreground">The address may be incorrect or the page may have moved. Return to the DrugSpot landing page to continue.</p>
-        <Button asChild size="lg" className="mt-8">
-          <Link to="/"><ArrowLeft />Return to landing page</Link>
-        </Button>
+        <BackButton variant="default" size="lg" className="mt-8">
+          Return to landing page
+        </BackButton>
       </section>
     </main>
   );

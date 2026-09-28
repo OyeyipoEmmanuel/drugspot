@@ -6,6 +6,7 @@ export interface ApiRequestOptions<TBody = unknown>
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   query?: Record<string, QueryValue | QueryValue[]>;
   timeoutMs?: number;
+  skipUnauthorizedHandler?: boolean;
 }
 
 export interface ApiErrorPayload {
@@ -64,6 +65,7 @@ function buildUrl(
 
 export class ApiClient {
   private tokenProvider?: AccessTokenProvider;
+  private unauthorizedHandler?: () => void;
 
   constructor(
     private readonly baseUrl: string,
@@ -72,6 +74,10 @@ export class ApiClient {
 
   setAccessTokenProvider(provider: AccessTokenProvider) {
     this.tokenProvider = provider;
+  }
+
+  setUnauthorizedHandler(handler?: () => void) {
+    this.unauthorizedHandler = handler;
   }
 
   async request<TResponse, TBody = unknown>(
@@ -85,6 +91,7 @@ export class ApiClient {
       query,
       signal: externalSignal,
       timeoutMs,
+      skipUnauthorizedHandler = false,
       ...fetchOptions
     } = options;
     const controller = new AbortController();
@@ -127,6 +134,9 @@ export class ApiClient {
 
       if (!response.ok) {
         const errorPayload = payload as ApiErrorPayload | undefined;
+        if (response.status === 401 && !skipUnauthorizedHandler) {
+          this.unauthorizedHandler?.();
+        }
         throw new ApiError(
           errorPayload?.detail ?? errorPayload?.message ?? "The request could not be completed.",
           response.status,

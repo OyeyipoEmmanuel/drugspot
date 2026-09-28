@@ -47,8 +47,10 @@ const NotFoundPage = lazy(() => import("@/pages/not-found-page").then((module) =
 export default function App() {
   return (
     <Suspense fallback={<LoadingState label="Opening DrugSpot…" />}><Routes>
-      <Route index element={<WelcomePage />} />
-      <Route path="welcome" element={<Navigate to="/" replace />} />
+      <Route element={<GuestOnly />}>
+        <Route index element={<WelcomePage />} />
+        <Route path="welcome" element={<WelcomePage />} />
+      </Route>
       <Route element={<GuestOnly />}>
         <Route element={<AuthLayout />}>
           <Route path="login" element={<LoginPage />} />

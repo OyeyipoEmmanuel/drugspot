@@ -1,6 +1,7 @@
 import { CheckCircle2, Clock3, LogOut, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { BackButton } from "@/components/back-button";
 import { BrandLogo } from "@/components/brand-logo";
 import { ErrorState, LoadingState } from "@/components/feedback-states";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ export function PharmacyApplicationPage() {
   return (
     <div className="min-h-screen bg-muted/40">
       <header className="flex h-16 items-center border-b bg-background px-4 sm:px-8">
+        <BackButton className="mr-3">Back</BackButton>
         <BrandLogo />
         <Button className="ml-auto" variant="ghost" size="icon" onClick={() => void logout()} aria-label="Sign out"><LogOut /></Button>
       </header>

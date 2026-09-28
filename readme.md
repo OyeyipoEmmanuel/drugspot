@@ -91,20 +91,25 @@ drugspot/
 
 ### Backend
 
+In a PowerShell terminal:
+
 ```powershell
 cd backend
 Copy-Item .env.example .env
 uv sync --dev
 uv run alembic upgrade head
+uv run python -m app.cli create-admin --email admin@example.com --phone +2348000000000 --first-name Platform --last-name Admin --password "choose-a-strong-password"
+uv run python -m app.db.seed
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-The local API will be available at `http://localhost:8000`, with interactive
-documentation at `http://localhost:8000/docs`.
+Run the admin command only once for a new database. The seed requires this admin
+to own the sample pharmacies and is safe to re-run. The API is available at
+`http://localhost:8000`; its docs are at `http://localhost:8000/docs`.
 
 ### Frontend
 
-In another terminal:
+In a second PowerShell terminal:
 
 ```powershell
 cd frontend
@@ -113,11 +118,8 @@ Copy-Item .env.example .env.local
 pnpm dev
 ```
 
-The frontend uses the following variable during local development:
-
-```text
-VITE_API_BASE_URL=http://localhost:8000/api/v1
-```
+The checked-in frontend environment sample points to
+`http://localhost:8000/api/v1`, so the frontend talks to the local backend.
 
 ## Tests and quality checks
 
@@ -138,79 +140,67 @@ uv run alembic check
 ## Deployment
 
 The root `vercel.json` builds `frontend/` on Vercel and rewrites application
-routes to `index.html`, allowing React Router pages to load correctly after a
-browser refresh. The FastAPI service is deployed separately from `backend/` on
-Pxxl.
+routes to `index.html`. Deploy the backend separately as a Python 3.12 web
+service with `backend` as its root directory. Use `pip install -r requirements.txt`
+as the build command and `/health` as the health-check path.
 
-### Vercel frontend
-
-Configure this production environment variable and rebuild the deployment:
+Pxxl can use the checked-in `Procfile`. On Render, set the start command to:
 
 ```text
-VITE_API_BASE_URL=https://drugspot.pxxlspace.cv/api/v1
+python -m alembic upgrade head && python -m app.db.seed && uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-Vite embeds environment variables at build time, so changing the value requires
-a new frontend deployment.
+Both startup commands migrate, seed, and then start the API. Seed data requires
+an existing platform administrator. For a new production database, create that
+admin once against the same database using the provider shell or a secure
+one-off command before using the normal start command.
 
-### Pxxl backend
-
-Set the Pxxl project root to `backend`, configure the application port as
-`8000`, and use `/health` as the health-check path.
-
-Configure these environment variables:
+Set these backend environment variables in Pxxl or Render:
 
 ```text
 APP_ENV=production
-DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require
-AUTH_SECRET=replace-with-a-random-secret-of-at-least-32-characters
+DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE
+AUTH_SECRET=<random secret of at least 32 characters>
 CORS_ORIGINS=https://drugspot.vercel.app
-OCR_SPACE_API_KEY=your-key-if-ocr-is-enabled
+OCR_SPACE_API_KEY=<optional OCR.space key>
 ```
 
-Use the pooled PostgreSQL connection URL supplied by the database provider.
-The backend automatically adapts a standard `postgresql://` URL for its async
-database driver.
+Use the provider's persistent PostgreSQL URL; the backend adapts
+`postgresql://` for its async driver. Render's internal database URL is preferred
+when the service and database share a region. Set `CORS_ORIGINS` to the exact
+frontend origin, without a trailing slash.
 
-Apply migrations and start the API with:
-
-```text
-alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
+In Vercel, set `VITE_API_BASE_URL` to the deployed API plus `/api/v1`, for
+example `https://drugspot.pxxlspace.cv/api/v1`. Redeploy the frontend after
+changing it because Vite embeds this value at build time.
 
 ## Docker deployment
 
-From the repository root, start the full stack with:
+From the repository root, copy the backend environment sample:
+
+```powershell
+Copy-Item backend/.env.example backend/.env
+```
+
+On the first run with a new Compose database, create the admin before starting
+the backend so the seed has an owner:
+
+```powershell
+docker compose up -d db
+docker compose build backend
+docker compose run --rm --no-deps --entrypoint python backend -m alembic upgrade head
+docker compose run --rm --no-deps --entrypoint python backend -m app.cli create-admin --email admin@example.com --phone +2348000000000 --first-name Platform --last-name Admin --password "choose-a-strong-password"
+```
+
+Then start the stack:
 
 ```powershell
 docker compose up --build -d
 ```
 
-This launches the PostgreSQL container and the FastAPI app together. The backend entrypoint runs:
-
-```sh
-python -m alembic upgrade head
-python -m app.db.seed
-exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-To stop the stack:
-
-```powershell
-docker compose down
-```
-
-To rebuild after code changes:
-
-```powershell
-docker compose up --build -d --force-recreate
-```
-
-Before starting the stack, copy the backend environment sample and set a strong `AUTH_SECRET`:
-
-```powershell
-Copy-Item backend/.env.example backend/.env
-```
+The backend entrypoint applies migrations and runs the idempotent seed before
+starting FastAPI. Later starts can use `docker compose up -d`. Stop with
+`docker compose down`.
 
 ## External-service notes
 

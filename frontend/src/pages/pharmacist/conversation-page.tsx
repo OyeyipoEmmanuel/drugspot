@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   FileText,
   LoaderCircle,
   Paperclip,
@@ -7,8 +6,9 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
+import { BackButton } from "@/components/back-button";
 import { ErrorState, LoadingState } from "@/components/feedback-states";
 import { VerifiedBadge } from "@/components/marketplace/verified-badge";
 import { Button } from "@/components/ui/button";
@@ -59,12 +59,7 @@ export function ConversationPage() {
   };
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      <Button asChild variant="ghost" className="-ml-3">
-        <Link to={staffView ? "/pharmacy/messages" : "/pharmacist"}>
-          <ArrowLeft />
-          {staffView ? "Inbox" : "Conversations"}
-        </Link>
-      </Button>
+      <BackButton>{staffView ? "Inbox" : "Conversations"}</BackButton>
       <section className="overflow-hidden rounded-3xl border bg-card shadow-sm">
         <header className="flex flex-col justify-between gap-4 border-b p-5 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">

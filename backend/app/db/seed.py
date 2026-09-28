@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth.models import User, UserRole
-from ..commerce.models import Product
+from ..commerce.models import InventoryItem, Product
 from ..database import AsyncSessionLocal
 from ..pharmacy_verification.models import Pharmacy, VerificationStatus
 
@@ -282,12 +282,10 @@ async def seed_products(session: AsyncSession, pharmacies: dict[str, Pharmacy]) 
     inserted = 0
     for item in PRODUCT_SEEDS:
         pharmacy = pharmacies[item["pharmacy_name"]]
-        existing = await session.scalar(
-            select(Product).where(Product.name == item["name"], Product.pharmacy_id == pharmacy.id)
-        )
-        if existing is None:
+        sku = f"{_slug(pharmacy.name)}-{_slug(item['name'])}-{_slug(item['strength'])}"
+        product = await session.scalar(select(Product).where(Product.sku == sku))
+        if product is None:
             product = Product(
-                pharmacy_id=pharmacy.id,
                 name=item["name"],
                 generic_name=item["generic_name"],
                 brand=item["brand"],
@@ -299,32 +297,50 @@ async def seed_products(session: AsyncSession, pharmacies: dict[str, Pharmacy]) 
                     f"{item['brand']} {item['name']} {item['strength']} for {item['category'].lower()} management. "
                     f"Available through {pharmacy.name} with delivery and pickup support."
                 ),
-                sku=f"{_slug(pharmacy.name)}-{_slug(item['name'])}-{_slug(item['strength'])}",
+                sku=sku,
+                requires_prescription=bool(item["requires_prescription"]),
+                requires_pharmacist_review=bool(item["requires_pharmacist_review"]),
+                is_active=True,
+            )
+            session.add(product)
+            await session.flush()
+            inserted += 1
+        else:
+            product.generic_name = item["generic_name"]
+            product.brand = item["brand"]
+            product.category = item["category"]
+            product.form = item["form"]
+            product.strength = item["strength"]
+            product.pack_size = item["pack_size"]
+            product.requires_prescription = bool(item["requires_prescription"])
+            product.requires_pharmacist_review = bool(item["requires_pharmacist_review"])
+            product.is_active = True
+
+        inventory = await session.scalar(
+            select(InventoryItem).where(
+                InventoryItem.product_id == product.id,
+                InventoryItem.pharmacy_id == pharmacy.id,
+            )
+        )
+        if inventory is None:
+            inventory = InventoryItem(
+                product_id=product.id,
+                pharmacy_id=pharmacy.id,
                 stock_count=int(item["stock_count"]),
                 reorder_level=int(item["reorder_level"]),
                 unit_price=Decimal(str(item["price"])),
-                requires_prescription=bool(item["requires_prescription"]),
-                requires_pharmacist_review=bool(item["requires_pharmacist_review"]),
                 preorder_supported=bool(item["preorder_supported"]),
                 estimated_restock_date=datetime.now(UTC) + timedelta(days=7 + inserted % 9),
                 is_active=True,
             )
-            session.add(product)
-            inserted += 1
+            session.add(inventory)
         else:
-            existing.generic_name = item["generic_name"]
-            existing.brand = item["brand"]
-            existing.category = item["category"]
-            existing.form = item["form"]
-            existing.strength = item["strength"]
-            existing.pack_size = item["pack_size"]
-            existing.stock_count = int(item["stock_count"])
-            existing.reorder_level = int(item["reorder_level"])
-            existing.unit_price = Decimal(str(item["price"]))
-            existing.requires_prescription = bool(item["requires_prescription"])
-            existing.requires_pharmacist_review = bool(item["requires_pharmacist_review"])
-            existing.preorder_supported = bool(item["preorder_supported"])
-            existing.is_active = True
+            inventory.stock_count = int(item["stock_count"])
+            inventory.reorder_level = int(item["reorder_level"])
+            inventory.unit_price = Decimal(str(item["price"]))
+            inventory.preorder_supported = bool(item["preorder_supported"])
+            inventory.estimated_restock_date = datetime.now(UTC) + timedelta(days=7 + inserted % 9)
+            inventory.is_active = True
     return inserted
 
 

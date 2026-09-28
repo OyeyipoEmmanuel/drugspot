@@ -1,6 +1,5 @@
 import {
   AlertTriangle,
-  ArrowLeft,
   BadgeCheck,
   Camera,
   FileText,
@@ -9,8 +8,9 @@ import {
   Trash2,
 } from "lucide-react";
 import { useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
+import { BackButton } from "@/components/back-button";
 import { MedicationForm } from "@/components/medications/medication-form";
 import { Button } from "@/components/ui/button";
 import { useCreateMedication, useOcrExtraction } from "@/hooks/use-medications";
@@ -87,12 +87,7 @@ export function OcrScanPage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <Button asChild variant="ghost" className="-ml-3">
-        <Link to="/medicines">
-          <ArrowLeft />
-          Back to medicines
-        </Link>
-      </Button>
+      <BackButton>Back to medicines</BackButton>
 
       {!result ? (
         <section className="mt-4 rounded-3xl border bg-card p-6 text-center shadow-sm sm:p-10">

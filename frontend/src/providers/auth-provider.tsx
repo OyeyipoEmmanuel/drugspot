@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 
-import { api } from "@/api/API";
+import { ApiError, api } from "@/api/API";
 import { authApi } from "@/api/modules/auth.api";
 import { sessionStorage } from "@/lib/session-storage";
 import type { AuthSession, LoginInput, RegisterInput } from "@/types/auth";
@@ -33,6 +33,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.read(),
   );
   const hydrated = useRef(false);
+  const refreshing = useRef(false);
+
+  useEffect(() => {
+    api.setUnauthorizedHandler(() => {
+      if (refreshing.current) return;
+      hydrated.current = false;
+      setSession(null);
+    });
+    return () => api.setUnauthorizedHandler(undefined);
+  }, []);
 
   useEffect(() => {
     api.setAccessTokenProvider(() => session?.accessToken ?? null);
@@ -47,15 +57,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then((user) =>
         setSession((current) => (current ? { ...current, user } : current)),
       )
-      .catch(async () => {
+      .catch(async (error: unknown) => {
+        if (!(error instanceof ApiError) || error.status !== 401) return;
         if (!session.refreshToken) {
+          hydrated.current = false;
           setSession(null);
           return;
         }
+        refreshing.current = true;
         try {
           setSession(await authApi.refresh(session.refreshToken));
-        } catch {
-          setSession(null);
+        } catch (refreshError: unknown) {
+          if (refreshError instanceof ApiError && refreshError.status === 401) {
+            hydrated.current = false;
+            setSession(null);
+          }
+        } finally {
+          refreshing.current = false;
         }
       });
   }, [session]);

@@ -118,9 +118,11 @@ uv run alembic check
 ## Production deployment
 
 The frontend origin is `https://drugspot.vercel.app` and is included in the
-default CORS allowlist. In Pxxl, configure a persistent PostgreSQL
-`DATABASE_URL`, a production `AUTH_SECRET`, and use the checked-in `Procfile`
-start command. It applies Alembic migrations before starting the API.
+default CORS allowlist. In Pxxl or Render, configure a persistent PostgreSQL
+`DATABASE_URL` and a production `AUTH_SECRET`. The checked-in `Procfile` runs
+Alembic migrations, loads the public seed data, then starts the API. Seed data
+requires an existing platform administrator; create one once against a fresh
+deployment database before enabling the normal startup command.
 
 ## Docker startup (recommended local deployment)
 
