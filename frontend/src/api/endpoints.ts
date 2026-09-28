@@ -5,7 +5,11 @@ export const endpoints = {
     logout: "/auth/logout/",
     refresh: "/auth/token/refresh/",
     profile: "/auth/profile/",
+    patientProfile: "/auth/profile/patient/",
     forgotPassword: "/auth/password/forgot/",
+    resetPassword: "/auth/password/reset/",
+    verifyEmail: "/auth/verify/email/",
+    verifyPhone: "/auth/verify/phone/",
     completeOnboarding: "/auth/onboarding/complete/",
   },
   medications: {
@@ -14,7 +18,10 @@ export const endpoints = {
     adherence: (id: string) => `/medications/${id}/adherence/`,
     ocr: "/medications/ocr/",
   },
-  pharmacies: { list: "/pharmacies/", detail: (id: string) => `/pharmacies/${id}/` },
+  pharmacies: {
+    list: "/pharmacies/",
+    detail: (id: string) => `/pharmacies/${id}/`,
+  },
   products: { list: "/products/", detail: (id: string) => `/products/${id}/` },
   orders: {
     list: "/orders/",
@@ -22,7 +29,13 @@ export const endpoints = {
     detail: (id: string) => `/orders/${id}/`,
   },
   preorders: { list: "/pre-order-requests/" },
-  pharmacists: { list: "/pharmacists/", detail: (id: string) => `/pharmacists/${id}/` },
+  pharmacists: {
+    list: "/pharmacists/",
+    detail: (id: string) => `/pharmacists/${id}/`,
+  },
+  pharmacistApplications: {
+    current: "/pharmacists/application/",
+  },
   conversations: {
     list: "/conversations/",
     detail: (id: string) => `/conversations/${id}/`,
@@ -30,5 +43,29 @@ export const endpoints = {
   },
   ocr: { extract: "/ocr/extractions/" },
   refills: { list: "/refill-requests/" },
-  admin: { verifications: "/admin/verifications/" },
+  pharmacyWorkspace: {
+    register: "/pharmacy/register/",
+    access: "/pharmacy/access/",
+    application: "/pharmacy/application/",
+    applications: "/pharmacy/applications/",
+    licenses: "/pharmacy/licenses/",
+    pharmacists: "/pharmacy/pharmacists/",
+    dashboard: "/pharmacy/dashboard/",
+    orders: "/pharmacy/orders/",
+    orderStatus: (id: string) => `/pharmacy/orders/${id}/status/`,
+    inventory: "/pharmacy/inventory/",
+    verifyNafdac: "/pharmacy/inventory/verify-nafdac/",
+    productImage: "/pharmacy/inventory/product-image/",
+    inventoryItem: (id: string) => `/pharmacy/inventory/${id}/`,
+    customers: "/pharmacy/customers/",
+    refills: "/pharmacy/refill-requests/",
+    refillStatus: (id: string) => `/pharmacy/refill-requests/${id}/status/`,
+  },
+  admin: {
+    verifications: "/admin/verifications/",
+    verification: (id: string) => `/admin/verifications/${id}/`,
+    pharmacistVerifications: "/admin/pharmacist-verifications/",
+    pharmacistVerification: (id: string) =>
+      `/admin/pharmacist-verifications/${id}/`,
+  },
 } as const;

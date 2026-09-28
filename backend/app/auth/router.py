@@ -1,183 +1,102 @@
-"""FastAPI router for authentication, verification, password reset, and RBAC."""
+"""Authentication API matching the React frontend contract."""
 
-from __future__ import annotations
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .deps import get_current_user, get_db, require_roles
-from .models import PatientProfile, PharmacyStaff, User, UserRole, VerificationPurpose
+from ..database import get_db
+from .deps import get_current_user, require_roles
+from .models import User, UserRole, VerificationPurpose
 from .schemas import (
-    AuthToken,
-    LoginRequest,
+    AuthSession,
+    ForgotPasswordInput,
+    LoginInput,
+    LogoutInput,
     MessageResponse,
-    PasswordResetConfirm,
-    PasswordResetRequest,
-    PatientProfileCreate,
+    OnboardingResponse,
+    PatientProfileInput,
     PatientProfileRead,
-    PharmacyStaffCreate,
-    PharmacyStaffRead,
-    TokenVerificationRequest,
-    UserCreate,
+    RefreshInput,
+    RegisterInput,
+    ResetPasswordInput,
     UserRead,
+    VerifyTokenInput,
 )
 from .service import (
-    create_patient_profile,
-    create_pharmacy_staff_profile,
-    login_user,
-    register_user,
+    complete_onboarding,
+    consume_verification_token,
+    login,
+    logout,
+    refresh_session,
+    register,
     request_password_reset,
-    reset_password,
-    verify_email_or_phone,
+    update_patient_profile,
 )
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
-@router.post(
-    "/register",
-    response_model=UserRead,
-    status_code=status.HTTP_201_CREATED,
-    summary="Register a user account",
-    description=(
-        "Create a new patient, pharmacist, pharmacy staff, or admin account. "
-        "Every new account insert is audited through the service layer."
-    ),
-)
-async def register_user_endpoint(payload: UserCreate, db: AsyncSession = Depends(get_db)) -> User:
-    """Register a new user account and return the persisted row."""
-    return await register_user(db, payload)
+@router.post("/register/", response_model=AuthSession, status_code=status.HTTP_201_CREATED)
+async def register_endpoint(payload: RegisterInput, db: AsyncSession = Depends(get_db)):
+    return await register(db, payload)
 
 
-@router.post(
-    "/login",
-    response_model=AuthToken,
-    summary="Authenticate a user and return a bearer token",
-    description="Login with an email or phone number and the password associated with the account.",
-)
-async def login_endpoint(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> dict:
-    """Authenticate a user and emit an access token."""
-    return await login_user(db, payload)
+@router.post("/login/", response_model=AuthSession)
+async def login_endpoint(payload: LoginInput, db: AsyncSession = Depends(get_db)):
+    return await login(db, payload)
 
 
-@router.post(
-    "/verify/email",
-    response_model=UserRead,
-    summary="Confirm an email verification token",
-    description="Consume a one-time email verification token to mark the account as email verified.",
-)
-async def verify_email_endpoint(
-    payload: TokenVerificationRequest,
+@router.post("/token/refresh/", response_model=AuthSession)
+async def refresh_endpoint(payload: RefreshInput, db: AsyncSession = Depends(get_db)):
+    return await refresh_session(db, payload.refresh_token)
+
+
+@router.post("/logout/", response_model=MessageResponse)
+async def logout_endpoint(payload: LogoutInput, db: AsyncSession = Depends(get_db)):
+    await logout(db, payload.refresh_token)
+    return MessageResponse(message="Signed out")
+
+
+@router.get("/profile/", response_model=UserRead)
+async def profile_endpoint(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@router.patch("/profile/patient/", response_model=PatientProfileRead)
+async def update_profile_endpoint(
+    payload: PatientProfileInput,
     db: AsyncSession = Depends(get_db),
-) -> User:
-    """Confirm an email verification token."""
-    return await verify_email_or_phone(db, payload.token, purpose=VerificationPurpose.EMAIL)
+    current_user: User = Depends(require_roles(UserRole.PATIENT)),
+):
+    return await update_patient_profile(db, current_user, payload)
 
 
-@router.post(
-    "/verify/phone",
-    response_model=UserRead,
-    summary="Confirm a phone verification token",
-    description="Consume a one-time phone verification token to mark the account as phone verified.",
-)
-async def verify_phone_endpoint(
-    payload: TokenVerificationRequest,
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    """Confirm a phone verification token."""
-    return await verify_email_or_phone(db, payload.token, purpose=VerificationPurpose.PHONE)
+@router.post("/onboarding/complete/", response_model=OnboardingResponse)
+async def onboarding_endpoint(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return OnboardingResponse(onboarding_complete=await complete_onboarding(db, current_user))
 
 
-@router.post(
-    "/request-password-reset",
-    response_model=MessageResponse,
-    summary="Request a password reset token",
-    description="Issue a one-time password reset token when a user supplies a valid email or phone number.",
-)
-async def request_password_reset_endpoint(
-    payload: PasswordResetRequest,
-    db: AsyncSession = Depends(get_db),
-) -> MessageResponse:
-    """Request a password reset token."""
-    await request_password_reset(db, payload)
-    return MessageResponse(message="Password reset token generated if the account exists.")
+@router.post("/password/forgot/", response_model=MessageResponse)
+async def forgot_password_endpoint(payload: ForgotPasswordInput, db: AsyncSession = Depends(get_db)):
+    await request_password_reset(db, payload.email)
+    return MessageResponse(message="If the account exists, reset instructions will be sent")
 
 
-@router.post(
-    "/reset-password",
-    response_model=MessageResponse,
-    summary="Complete a password reset",
-    description="Consume a password reset token and replace the user's password with a new one.",
-)
-async def reset_password_endpoint(
-    payload: PasswordResetConfirm,
-    db: AsyncSession = Depends(get_db),
-) -> MessageResponse:
-    """Set a new password from a valid reset token."""
-    await reset_password(db, payload)
+@router.post("/password/reset/", response_model=MessageResponse)
+async def reset_password_endpoint(payload: ResetPasswordInput, db: AsyncSession = Depends(get_db)):
+    await consume_verification_token(db, payload.token, VerificationPurpose.PASSWORD_RESET, payload.new_password)
     return MessageResponse(message="Password reset successful")
 
 
-@router.get(
-    "/me",
-    response_model=UserRead,
-    summary="Fetch the authenticated user's account",
-    description="Return the currently authenticated account. This endpoint clearly requires a logged-in user.",
-)
-async def me_endpoint(current_user: User = Depends(require_roles(UserRole.PATIENT, UserRole.PHARMACIST, UserRole.PHARMACY_STAFF, UserRole.ADMIN))) -> User:
-    """Return the authenticated user profile."""
-    return current_user
+@router.post("/verify/email/", response_model=UserRead)
+async def verify_email_endpoint(payload: VerifyTokenInput, db: AsyncSession = Depends(get_db)):
+    return await consume_verification_token(db, payload.token, VerificationPurpose.EMAIL)
 
 
-@router.get(
-    "/admin-only",
-    response_model=UserRead,
-    summary="Administrative-only route",
-    description="Example endpoint that enforces an admin-only RBAC guard.",
-)
-async def admin_only_endpoint(current_user: User = Depends(require_roles(UserRole.ADMIN))) -> User:
-    """Return the admin user record after RBAC validation."""
-    return current_user
+@router.post("/verify/phone/", response_model=UserRead)
+async def verify_phone_endpoint(payload: VerifyTokenInput, db: AsyncSession = Depends(get_db)):
+    return await consume_verification_token(db, payload.token, VerificationPurpose.PHONE)
 
 
-@router.post(
-    "/patients/profile",
-    response_model=PatientProfileRead,
-    summary="Create a patient profile",
-    description="Attach a patient profile to a patient account. This is separate from the account record itself.",
-)
-async def patient_profile_endpoint(
-    payload: PatientProfileCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles(UserRole.PATIENT)),
-) -> PatientProfile:
-    """Create a patient profile for the authenticated patient."""
-    return await create_patient_profile(db, current_user, payload)
-
-
-@router.post(
-    "/pharmacy-staff/profile",
-    response_model=PharmacyStaffRead,
-    summary="Create a pharmacy staff profile",
-    description="Attach pharmacy staff metadata to a pharmacist or pharmacy staff account.",
-)
-async def pharmacy_staff_profile_endpoint(
-    payload: PharmacyStaffCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles(UserRole.PHARMACIST, UserRole.PHARMACY_STAFF)),
-) -> PharmacyStaff:
-    """Create pharmacy staff metadata for the authenticated professional account."""
-    return await create_pharmacy_staff_profile(db, current_user, payload.model_dump())
-
-
-@router.post(
-    "/demo/permission-check",
-    response_model=UserRead,
-    summary="RBAC guard demonstration",
-    description="This route is intentionally restricted to pharmacists and admins to show explicit per-endpoint authorization.",
-)
-async def permission_demo_endpoint(
-    current_user: User = Depends(require_roles(UserRole.PHARMACIST, UserRole.ADMIN)),
-) -> User:
-    """Return the current authorized user after RBAC enforcement."""
+@router.get("/admin-only/", response_model=UserRead)
+async def admin_only_endpoint(current_user: User = Depends(require_roles(UserRole.PLATFORM_ADMIN))):
     return current_user

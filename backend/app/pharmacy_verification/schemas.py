@@ -1,245 +1,141 @@
-"""Pydantic schemas for pharmacy verification and medication management."""
-
-from __future__ import annotations
+"""Schemas for pharmacy onboarding and verification."""
 
 from datetime import datetime
-from enum import Enum
+from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import EmailStr, Field, model_validator
 
-
-class Role(str, Enum):
-    """Role names exposed to the OpenAPI contract."""
-
-    PATIENT = "patient"
-    PHARMACIST = "pharmacist"
-    PHARMACY_STAFF = "pharmacy_staff"
-    ADMIN = "admin"
+from ..auth.schemas import ApiModel, RegisterInput
+from .models import VerificationStatus
 
 
-class VerificationStatus(str, Enum):
-    """Decision status for pharmacy verification records."""
-
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
-    EXPIRED = "expired"
-
-
-class MedicationFrequency(str, Enum):
-    """Allowed medication schedule frequency values."""
-
-    DAILY = "daily"
-    TWICE_DAILY = "twice_daily"
-    WEEKLY = "weekly"
-    AS_NEEDED = "as_needed"
-
-
-class PharmacyCreate(BaseModel):
-    """Create a pharmacy listing."""
-
-    name: str = Field(..., min_length=2, max_length=200)
-    address: str | None = Field(default=None, max_length=500)
-    city: str | None = Field(default=None, max_length=120)
-    state: str | None = Field(default=None, max_length=120)
+class PharmacyApplicationInput(ApiModel):
+    name: str = Field(min_length=2, max_length=200)
+    address: str = Field(min_length=5, max_length=500)
+    city: str = Field(min_length=2, max_length=120)
+    state: str = Field(min_length=2, max_length=120)
     country: str = Field(default="Nigeria", min_length=2, max_length=120)
-    phone_number: str | None = Field(default=None, min_length=7, max_length=30)
-    email: str | None = Field(default=None, max_length=255)
-
-    @field_validator("phone_number")
-    @classmethod
-    def validate_phone(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        digits = "".join(ch for ch in value if ch.isdigit())
-        if len(digits) < 7:
-            raise ValueError("phone_number must contain at least 7 digits")
-        return digits
+    phone: str = Field(min_length=7, max_length=30)
+    email: EmailStr
+    description: str = Field(default="", max_length=2000)
+    hours: str = Field(default="Mon-Sat, 8:00 AM-8:00 PM", max_length=160)
+    supports_delivery: bool = True
+    supports_pickup: bool = True
+    delivery_fee: Decimal = Field(default=0, ge=0)
 
 
-class PharmacyUpdate(BaseModel):
-    """Partial update schema for a pharmacy record."""
-
-    name: str | None = Field(default=None, min_length=2, max_length=200)
-    address: str | None = Field(default=None, max_length=500)
-    city: str | None = Field(default=None, max_length=120)
-    state: str | None = Field(default=None, max_length=120)
-    country: str | None = Field(default=None, min_length=2, max_length=120)
-    phone_number: str | None = Field(default=None, min_length=7, max_length=30)
-    email: str | None = Field(default=None, max_length=255)
-    is_verified: bool | None = None
-    is_active: bool | None = None
-
-
-class PharmacyRead(BaseModel):
-    """Pharmacy representation delivered to authenticated users."""
-
+class PharmacyApplicationRead(PharmacyApplicationInput):
     id: str
-    name: str
-    address: str | None = None
-    city: str | None = None
-    state: str | None = None
-    country: str
-    phone_number: str | None = None
-    email: str | None = None
-    is_verified: bool
+    owner_user_id: str
+    verification_status: VerificationStatus
     is_active: bool
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+
+class PharmacyPublic(ApiModel):
+    id: str
+    name: str
+    verified: bool
+    rating: float
+    review_count: int
+    address: str
+    area: str
+    distance_km: float = 0
+    phone: str
+    hours: str
+    supports_delivery: bool
+    supports_pickup: bool
+    delivery_fee: float
+    description: str
 
 
-class PharmacistCreate(BaseModel):
-    """Create a pharmacist profile for a pharmacy."""
+class LicenseInput(ApiModel):
+    license_number: str = Field(min_length=3, max_length=120)
+    issued_by: str = Field(min_length=2, max_length=200)
+    issued_at: datetime | None = None
+    expires_at: datetime | None = None
+    document_url: str | None = Field(default=None, max_length=1000)
 
-    pharmacy_id: str
-    user_id: str = Field(..., min_length=1, max_length=36)
-    full_name: str = Field(..., min_length=2, max_length=200)
-    license_number: str | None = Field(default=None, min_length=3, max_length=120)
+    @model_validator(mode="after")
+    def validate_dates(self):
+        if self.issued_at and self.expires_at and self.expires_at <= self.issued_at:
+            raise ValueError("expiresAt must be after issuedAt")
+        return self
 
 
-class PharmacistRead(BaseModel):
-    """Pharmacist profile returned to authorized roles."""
-
+class LicenseRead(LicenseInput):
     id: str
     pharmacy_id: str
+    created_at: datetime
+
+
+class PharmacistInput(ApiModel):
     user_id: str
-    full_name: str
-    license_number: str | None = None
-    is_active: bool
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
+    license_number: str = Field(min_length=3, max_length=120)
 
 
-class PharmacyLicenseCreate(BaseModel):
-    """Create a pharmacy license record."""
-
-    pharmacy_id: str
-    license_number: str = Field(..., min_length=3, max_length=120)
-    issued_by: str | None = Field(default=None, max_length=200)
-    expires_at: datetime | None = None
-    notes: str | None = Field(default=None, max_length=1000)
-
-
-class PharmacyLicenseRead(BaseModel):
-    """License record returned by the API."""
-
+class PharmacistRead(PharmacistInput):
     id: str
     pharmacy_id: str
+    license_issued_by: str | None = None
+    license_document_url: str | None = None
+    verification_status: VerificationStatus
+    is_active: bool
+    created_at: datetime
+
+
+class PharmacyVendorRegistrationInput(RegisterInput):
+    pharmacy: PharmacyApplicationInput
+    pharmacy_license: LicenseInput
+    pharmacist_license_number: str = Field(min_length=3, max_length=120)
+    pharmacist_license_issued_by: str = Field(min_length=2, max_length=200)
+    pharmacist_license_document_url: str = Field(min_length=5, max_length=1000)
+
+    @model_validator(mode="after")
+    def require_pharmacy_document(self):
+        if not self.pharmacy_license.document_url:
+            raise ValueError("pharmacyLicense.documentUrl is required")
+        return self
+
+
+class PharmacistApplicationRead(ApiModel):
+    id: str
+    user_id: str
+    pharmacy_id: str
+    pharmacy_name: str
+    first_name: str
+    last_name: str
+    email: EmailStr
     license_number: str
-    issued_by: str | None = None
-    issued_at: datetime
-    expires_at: datetime | None = None
-    status: VerificationStatus
-    notes: str | None = None
-
-    model_config = ConfigDict(from_attributes=True)
+    license_issued_by: str | None = None
+    license_document_url: str | None = None
+    verification_status: VerificationStatus
+    created_at: datetime
 
 
-class VerificationRecordCreate(BaseModel):
-    """Decision record written during verification review."""
-
-    pharmacy_id: str | None = None
-    pharmacist_id: str | None = None
-    reviewer_id: str | None = Field(default=None, max_length=36)
-    decision: VerificationStatus = VerificationStatus.PENDING
-    notes: str | None = Field(default=None, max_length=1000)
-
-
-class VerificationRecordRead(BaseModel):
-    """Verification record response model."""
-
-    id: str
-    pharmacy_id: str | None = None
-    pharmacist_id: str | None = None
-    reviewer_id: str | None = None
+class VerificationDecisionInput(ApiModel):
     decision: VerificationStatus
-    notes: str | None = None
-    created_at: datetime
+    notes: str | None = Field(default=None, max_length=2000)
 
-    model_config = ConfigDict(from_attributes=True)
-
-
-class MedicationRecordCreate(BaseModel):
-    """Create a medication record for a pharmacy catalog."""
-
-    pharmacy_id: str
-    pharmacist_id: str | None = None
-    name: str = Field(..., min_length=2, max_length=200)
-    generic_name: str | None = Field(default=None, max_length=200)
-    dosage_form: str | None = Field(default=None, max_length=60)
-    strength: str | None = Field(default=None, max_length=80)
-    instructions: str | None = Field(default=None, max_length=1000)
+    @model_validator(mode="after")
+    def reject_pending(self):
+        if self.decision == VerificationStatus.PENDING:
+            raise ValueError("A review decision cannot remain pending")
+        return self
 
 
-class MedicationRecordUpdate(BaseModel):
-    """Update an existing medication record."""
-
-    name: str | None = Field(default=None, min_length=2, max_length=200)
-    generic_name: str | None = Field(default=None, max_length=200)
-    dosage_form: str | None = Field(default=None, max_length=60)
-    strength: str | None = Field(default=None, max_length=80)
-    instructions: str | None = Field(default=None, max_length=1000)
-    is_active: bool | None = None
+class VerificationQueueItem(ApiModel):
+    pharmacy: PharmacyApplicationRead
+    licenses: list[LicenseRead]
+    pharmacist_in_charge: PharmacistApplicationRead | None = None
 
 
-class MedicationRecordRead(BaseModel):
-    """Medication catalog entry returned to the client."""
-
+class VerificationRecordRead(ApiModel):
     id: str
-    pharmacy_id: str
+    pharmacy_id: str | None = None
     pharmacist_id: str | None = None
-    name: str
-    generic_name: str | None = None
-    dosage_form: str | None = None
-    strength: str | None = None
-    instructions: str | None = None
-    is_active: bool
+    reviewer_id: str
+    decision: VerificationStatus
+    notes: str | None
     created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class MedicationScheduleCreate(BaseModel):
-    """Create a medication schedule."""
-
-    label: str = Field(..., min_length=2, max_length=200)
-    frequency: MedicationFrequency = MedicationFrequency.DAILY
-    time_of_day: str | None = Field(default=None, max_length=120)
-    start_date: datetime | None = None
-    end_date: datetime | None = None
-    notes: str | None = Field(default=None, max_length=500)
-
-    @field_validator("end_date")
-    @classmethod
-    def validate_end_date(cls, value: datetime | None, info):
-        start_date = info.data.get("start_date")
-        if value is not None and start_date is not None and value < start_date:
-            raise ValueError("end_date must be after start_date")
-        return value
-
-
-class MedicationScheduleRead(BaseModel):
-    """Medication schedule response model."""
-
-    id: str
-    medication_id: str
-    label: str
-    frequency: MedicationFrequency
-    time_of_day: str | None = None
-    start_date: datetime | None = None
-    end_date: datetime | None = None
-    notes: str | None = None
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class MessageResponse(BaseModel):
-    """Generic acknowledgement payload for mutation endpoints."""
-
-    message: str

@@ -20,7 +20,7 @@ export function OnboardingPage() {
   const [saving, setSaving] = useState(false);
   const slide = slides[index];
   const SlideIcon = slide.icon;
-  const finish = async () => { setSaving(true); await completeOnboarding(); navigate("/", { replace: true }); };
+  const finish = async () => { setSaving(true); await completeOnboarding(); navigate("/home", { replace: true }); };
   return (
     <div className="min-h-screen bg-background p-4 sm:p-8">
       <div className="mx-auto flex max-w-2xl justify-end"><Button variant="ghost" onClick={finish}><X />{t("onboarding.skip")}</Button></div>

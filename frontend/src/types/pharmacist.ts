@@ -30,6 +30,8 @@ export interface ConversationMessage {
 
 export interface PharmacistConversation {
   id: string;
+  pharmacyId: string;
+  pharmacyName: string;
   pharmacist: PharmacistProfile;
   patientName: string;
   subject: string;
@@ -37,6 +39,11 @@ export interface PharmacistConversation {
   unreadCount: number;
   updatedAt: string;
   messages: ConversationMessage[];
+}
+
+export interface ConversationPharmacyScope {
+  pharmacyId: string;
+  pharmacyName: string;
 }
 
 export interface StartConversationInput {

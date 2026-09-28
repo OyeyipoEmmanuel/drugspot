@@ -63,6 +63,7 @@ export function DashboardLayout() {
           </Button>
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden text-sm font-semibold sm:block">{session?.user.firstName} {session?.user.lastName}</span>
+            {session?.user.role === "pharmacy_admin" && <Button asChild variant="outline" size="sm"><Link to="/pharmacy-application">Verification</Link></Button>}
             <Button asChild variant="ghost" size="sm"><Link to="/">{t("navigation.patientApp")}</Link></Button>
             <Button variant="ghost" size="icon" onClick={logout} aria-label={t("auth.signOut")}><LogOut /></Button>
           </div>

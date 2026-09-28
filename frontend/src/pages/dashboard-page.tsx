@@ -1,25 +1,164 @@
-import { AlertTriangle, ClipboardCheck, RotateCcw } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import {
+  AlertTriangle,
+  Banknote,
+  CheckCircle2,
+  ClipboardCheck,
+  RotateCcw,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 
-const stats = [
-  { key: "openOrders", value: "18", icon: ClipboardCheck, colour: "bg-blue-100 text-blue-700" },
-  { key: "lowStock", value: "7", icon: AlertTriangle, colour: "bg-amber-100 text-amber-700" },
-  { key: "refillRequests", value: "12", icon: RotateCcw, colour: "bg-emerald-100 text-emerald-700" },
-] as const;
+import { ErrorState, LoadingState } from "@/components/feedback-states";
+import { OrderStatusBadge } from "@/components/marketplace/order-status-badge";
+import { Button } from "@/components/ui/button";
+import { usePharmacyDashboard } from "@/hooks/use-pharmacy-workspace";
+import { formatDate, formatNaira } from "@/lib/format";
 
 export function DashboardPage() {
-  const { t } = useTranslation();
+  const { data, isLoading, error, refetch } = usePharmacyDashboard();
+  if (isLoading) return <LoadingState label="Loading pharmacy workspace…" />;
+  if (error || !data)
+    return (
+      <ErrorState
+        message="We could not load the pharmacy workspace."
+        onRetry={() => void refetch()}
+      />
+    );
+  const stats = [
+    {
+      label: "Open orders",
+      value: data.openOrders,
+      icon: ClipboardCheck,
+      colour: "bg-blue-100 text-blue-700",
+    },
+    {
+      label: "Low-stock items",
+      value: data.lowStockItems,
+      icon: AlertTriangle,
+      colour: "bg-amber-100 text-amber-700",
+    },
+    {
+      label: "Refill requests",
+      value: data.refillRequests,
+      icon: RotateCcw,
+      colour: "bg-emerald-100 text-emerald-700",
+    },
+    {
+      label: "Today's sales",
+      value: formatNaira(data.todaySales),
+      icon: Banknote,
+      colour: "bg-violet-100 text-violet-700",
+    },
+  ];
   return (
     <div className="space-y-7">
-      <section><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("dashboard.title")}</h1><p className="mt-2 text-muted-foreground">{t("dashboard.subtitle")}</p></section>
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {stats.map(({ key, value, icon: Icon, colour }) => (
-          <article key={key} className="rounded-2xl border bg-card p-5 shadow-sm">
-            <div className={`grid size-11 place-items-center rounded-xl ${colour}`}><Icon className="size-5" /></div>
-            <p className="mt-5 text-3xl font-bold">{value}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t(`dashboard.${key}`)}</p>
+      <section>
+        <p className="text-sm font-semibold text-primary">
+          {data.pharmacyName}
+        </p>
+        <h1 className="mt-1 text-3xl font-bold">Pharmacy workspace</h1>
+        <p className="mt-2 text-muted-foreground">
+          Orders, inventory, refills, and sales at a glance.
+        </p>
+      </section>
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map(({ label, value, icon: Icon, colour }) => (
+          <article
+            key={label}
+            className="rounded-2xl border bg-card p-5 shadow-sm"
+          >
+            <div
+              className={`grid size-11 place-items-center rounded-xl ${colour}`}
+            >
+              <Icon className="size-5" />
+            </div>
+            <p className="mt-5 text-2xl font-bold">{value}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{label}</p>
           </article>
         ))}
+      </section>
+      <section className="grid gap-5 lg:grid-cols-3">
+        <article className="rounded-3xl border bg-card p-6 shadow-sm lg:col-span-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold">Recent orders</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Newest patient orders requiring attention.
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/pharmacy/orders">View all</Link>
+            </Button>
+          </div>
+          <div className="mt-5 divide-y">
+            {data.recentOrders.map((order) => (
+              <Link
+                to="/pharmacy/orders"
+                key={order.id}
+                className="flex flex-col justify-between gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center"
+              >
+                <div>
+                  <p className="font-bold">
+                    #{order.reference} · {order.patientName}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {order.items.length} item(s) ·{" "}
+                    {formatDate(order.createdAt, {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <OrderStatusBadge status={order.status} />
+                  <span className="font-bold">{formatNaira(order.total)}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </article>
+        <aside className="rounded-3xl border bg-card p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold">Low stock</h2>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/pharmacy/inventory">Manage</Link>
+            </Button>
+          </div>
+          <div className="mt-5 space-y-4">
+            {data.lowStock.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between gap-3"
+              >
+                <div>
+                  <p className="text-sm font-semibold">{item.productName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.strength} · {item.sku}
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.stockCount === 0 ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"}`}
+                >
+                  {item.stockCount} left
+                </span>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </section>
+      <section className="grid gap-4 sm:grid-cols-3">
+        <article className="rounded-2xl bg-primary p-5 text-primary-foreground">
+          <p className="text-sm text-blue-100">7-day sales</p>
+          <p className="mt-2 text-2xl font-bold">
+            {formatNaira(data.weekSales)}
+          </p>
+        </article>
+        <article className="rounded-2xl border bg-card p-5">
+          <CheckCircle2 className="text-emerald-600" />
+          <p className="mt-3 text-2xl font-bold">{data.fulfilledThisWeek}</p>
+          <p className="text-sm text-muted-foreground">
+            Orders fulfilled this week
+          </p>
+        </article>
       </section>
     </div>
   );

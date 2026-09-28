@@ -1,105 +1,69 @@
-from __future__ import annotations
-
 import asyncio
-from typing import Any, AsyncGenerator
 
-import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import StaticPool
+from app.auth.models import UserRole
 
-from backend.app.auth.deps import get_db
-from backend.app.auth.models import Base
-from backend.app.auth.router import router
+from .conftest import auth_header, register_patient
 
 
-@pytest.fixture
-def client() -> TestClient:
-    engine = create_async_engine(
-        "sqlite+aiosqlite://",
-        poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
-    )
+def test_health_and_frontend_auth_contract(api) -> None:
+    client, _ = api
+    assert client.get("/health").json() == {"status": "ok"}
+    session = register_patient(client, email="patient@example.com", phone="+2348012345678")
+    assert session["user"]["firstName"] == "Ada"
+    assert session["user"]["role"] == "patient"
+    assert session["accessToken"] and session["refreshToken"]
 
-    async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    profile = client.get("/api/v1/auth/profile/", headers=auth_header(session))
+    assert profile.status_code == 200
+    assert profile.json()["email"] == "patient@example.com"
 
-    async def create_schema() -> None:
-        async with engine.begin() as connection:
-            await connection.run_sync(Base.metadata.create_all)
-
-    asyncio.run(create_schema())
-
-    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
-        async with async_session_factory() as session:
-            yield session
-
-    app = FastAPI(title="Auth Module Test App")
-    app.include_router(router)
-    app.dependency_overrides[get_db] = override_get_db
-
-    with TestClient(app) as test_client:
-        yield test_client
-
-    app.dependency_overrides.clear()
+    onboarding = client.post("/api/v1/auth/onboarding/complete/", json={}, headers=auth_header(session))
+    assert onboarding.status_code == 200
+    assert onboarding.json() == {"onboardingComplete": True}
 
 
-def test_register_and_login_happy_path(client: TestClient) -> None:
-    payload = {
-        "email": "patient@example.com",
-        "phone_number": "+2348012345678",
-        "password": "StrongPass123!",
-        "role": "patient",
-    }
-
-    response = client.post("/auth/register", json=payload)
-    assert response.status_code == 201, response.text
-
-    login = client.post(
-        "/auth/login",
-        json={"email_or_phone": "patient@example.com", "password": "StrongPass123!"},
-    )
-    assert login.status_code == 200, login.text
-    body = login.json()
-    assert body["token_type"] == "bearer"
-    assert body["user"]["email"] == "patient@example.com"
-
-    token = body["access_token"]
-    me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
-    assert me.status_code == 200, me.text
-    assert me.json()["role"] == "patient"
-
-
-def test_admin_only_route_rejects_non_admin(client: TestClient) -> None:
-    client.post(
-        "/auth/register",
-        json={
-            "email": "staff@example.com",
-            "phone_number": "+2348098765432",
-            "password": "StrongPass123!",
-            "role": "pharmacist",
-        },
-    )
-
-    login = client.post(
-        "/auth/login",
-        json={"email_or_phone": "staff@example.com", "password": "StrongPass123!"},
-    )
-    token = login.json()["access_token"]
-
-    response = client.get("/auth/admin-only", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 403, response.text
-    assert "Access denied" in response.json()["detail"]
-
-
-def test_validation_error_for_bad_password(client: TestClient) -> None:
+def test_public_registration_cannot_select_privileged_role(api) -> None:
+    client, _ = api
     response = client.post(
-        "/auth/register",
+        "/api/v1/auth/register/",
         json={
-            "email": "bad@example.com",
-            "phone_number": "+2348123456789",
-            "password": "short",
-            "role": "patient",
+            "firstName": "Mallory",
+            "lastName": "Admin",
+            "email": "mallory@example.com",
+            "phone": "+2348011111111",
+            "password": "StrongPass123!",
+            "role": "platform_admin",
         },
     )
-    assert response.status_code == 422, response.text
+    assert response.status_code == 422
+
+
+def test_refresh_rotation_and_logout(api) -> None:
+    client, _ = api
+    initial = register_patient(client, email="rotate@example.com", phone="+2348022222222")
+    refreshed = client.post("/api/v1/auth/token/refresh/", json={"refreshToken": initial["refreshToken"]})
+    assert refreshed.status_code == 200, refreshed.text
+    assert refreshed.json()["refreshToken"] != initial["refreshToken"]
+    assert client.post("/api/v1/auth/token/refresh/", json={"refreshToken": initial["refreshToken"]}).status_code == 401
+
+    logout = client.post("/api/v1/auth/logout/", json={"refreshToken": refreshed.json()["refreshToken"]})
+    assert logout.status_code == 200
+    assert (
+        client.post("/api/v1/auth/token/refresh/", json={"refreshToken": refreshed.json()["refreshToken"]}).status_code
+        == 401
+    )
+
+
+def test_rbac_and_non_enumerating_password_reset(api) -> None:
+    client, create_user = api
+    patient = register_patient(client, email="rbac@example.com", phone="+2348033333333")
+    assert client.get("/api/v1/auth/admin-only/", headers=auth_header(patient)).status_code == 403
+
+    first = client.post("/api/v1/auth/password/forgot/", json={"email": "rbac@example.com"})
+    second = client.post("/api/v1/auth/password/forgot/", json={"email": "missing@example.com"})
+    assert first.status_code == second.status_code == 200
+    assert first.json() == second.json()
+
+    asyncio.run(create_user(email="admin@example.com", phone="+2348044444444", role=UserRole.PLATFORM_ADMIN))
+    login = client.post("/api/v1/auth/login/", json={"email": "admin@example.com", "password": "StrongPass123!"})
+    assert client.get("/api/v1/auth/admin-only/", headers=auth_header(login.json())).status_code == 200

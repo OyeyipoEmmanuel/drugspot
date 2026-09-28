@@ -1,317 +1,164 @@
-"""FastAPI router for pharmacy verification and medication schedules."""
-
-from __future__ import annotations
+"""Public pharmacy, pharmacy workspace, and platform review routes."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .deps import get_current_user, get_db, require_roles
-from .models import MedicationRecord, MedicationSchedule, Pharmacy, PharmacyLicense, Pharmacist, VerificationRecord
+from ..auth.deps import require_roles
+from ..auth.models import User, UserRole
+from ..auth.schemas import AuthSession
+from ..database import get_db
 from .schemas import (
-    MedicationRecordCreate,
-    MedicationRecordRead,
-    MedicationRecordUpdate,
-    MedicationScheduleCreate,
-    MedicationScheduleRead,
-    MessageResponse,
-    PharmacyCreate,
-    PharmacyLicenseCreate,
-    PharmacyLicenseRead,
-    PharmacyRead,
-    PharmacyUpdate,
-    PharmacistCreate,
+    LicenseInput,
+    LicenseRead,
+    PharmacistApplicationRead,
+    PharmacistInput,
     PharmacistRead,
-    VerificationRecordCreate,
+    PharmacyApplicationInput,
+    PharmacyApplicationRead,
+    PharmacyPublic,
+    PharmacyVendorRegistrationInput,
+    VerificationDecisionInput,
+    VerificationQueueItem,
     VerificationRecordRead,
 )
 from .service import (
-    create_medication_record,
-    create_medication_schedule,
-    create_pharmacist,
-    create_pharmacy,
-    create_pharmacy_license,
-    create_verification_record,
-    delete_medication_record,
-    get_medication_record,
-    get_pharmacy,
-    list_medication_records,
-    list_medication_schedules,
-    list_pharmacies,
-    list_pharmacists,
-    update_medication_record,
-    update_medication_schedule,
-    update_pharmacy,
+    add_license,
+    add_pharmacist,
+    create_application,
+    get_owned_pharmacy,
+    get_pharmacist_application,
+    pharmacist_application_payload,
+    pharmacist_verification_queue,
+    public_pharmacies,
+    public_pharmacy,
+    register_pharmacy_vendor,
+    review_application,
+    review_pharmacist_application,
+    to_public,
+    verification_queue,
 )
 
-router = APIRouter(prefix="/pharmacy", tags=["pharmacy"])
+public_router = APIRouter(prefix="/pharmacies", tags=["pharmacies"])
+pharmacy_router = APIRouter(prefix="/pharmacy", tags=["pharmacy workspace"])
+admin_router = APIRouter(prefix="/admin", tags=["platform administration"])
+professional_router = APIRouter(prefix="/pharmacists", tags=["pharmacists"])
 
 
-@router.post(
-    "/pharmacies",
-    response_model=PharmacyRead,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create a pharmacy record",
-    description="Register a pharmacy in the marketplace catalog. This endpoint enforces explicit RBAC.",
-)
-async def create_pharmacy_endpoint(
-    payload: PharmacyCreate,
+@public_router.get("/", response_model=list[PharmacyPublic])
+async def list_public_pharmacies(db: AsyncSession = Depends(get_db)):
+    return [to_public(item) for item in await public_pharmacies(db)]
+
+
+@public_router.get("/{pharmacy_id}/", response_model=PharmacyPublic)
+async def get_public_pharmacy(pharmacy_id: str, db: AsyncSession = Depends(get_db)):
+    return to_public(await public_pharmacy(db, pharmacy_id))
+
+
+@professional_router.get("/application/", response_model=PharmacistApplicationRead)
+async def own_pharmacist_application(
     db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("admin", "pharmacy_staff")),
-) -> Pharmacy:
-    """Create a new pharmacy record."""
-    return await create_pharmacy(db, payload, actor_id=getattr(current_user, "id", None))
+    current_user: User = Depends(require_roles(UserRole.PHARMACIST_APPLICANT, UserRole.PHARMACIST)),
+):
+    application = await get_pharmacist_application(db, current_user.id)
+    if application is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pharmacist application not found")
+    return pharmacist_application_payload(application)
 
 
-@router.get(
-    "/pharmacies",
-    response_model=list[PharmacyRead],
-    summary="List pharmacies",
-    description="Return all pharmacies visible to an authenticated user.",
-)
-async def list_pharmacies_endpoint(
+@pharmacy_router.post("/register/", response_model=AuthSession, status_code=status.HTTP_201_CREATED)
+async def register_vendor(payload: PharmacyVendorRegistrationInput, db: AsyncSession = Depends(get_db)):
+    return await register_pharmacy_vendor(db, payload)
+
+
+@pharmacy_router.post("/applications/", response_model=PharmacyApplicationRead, status_code=status.HTTP_201_CREATED)
+async def submit_application(
+    payload: PharmacyApplicationInput,
     db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("patient", "pharmacist", "pharmacy_staff", "admin")),
-) -> list[Pharmacy]:
-    """List pharmacy records."""
-    return await list_pharmacies(db)
+    current_user: User = Depends(require_roles(UserRole.PATIENT, UserRole.PHARMACY_ADMIN)),
+):
+    return await create_application(db, current_user, payload)
 
 
-@router.get(
-    "/pharmacies/{pharmacy_id}",
-    response_model=PharmacyRead,
-    summary="Fetch a pharmacy",
-    description="Return a single pharmacy record and its public merchant metadata.",
-)
-async def get_pharmacy_endpoint(
-    pharmacy_id: str,
+@pharmacy_router.get("/application/", response_model=PharmacyApplicationRead)
+async def own_application(
     db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("patient", "pharmacist", "pharmacy_staff", "admin")),
-) -> Pharmacy:
-    """Fetch a single pharmacy record."""
-    pharmacy = await get_pharmacy(db, pharmacy_id)
+    current_user: User = Depends(require_roles(UserRole.PHARMACY_ADMIN)),
+):
+    pharmacy = await get_owned_pharmacy(db, current_user.id)
     if pharmacy is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pharmacy not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pharmacy application not found")
     return pharmacy
 
 
-@router.put(
-    "/pharmacies/{pharmacy_id}",
-    response_model=PharmacyRead,
-    summary="Update a pharmacy",
-    description="Update pharmacy metadata after identity and ownership checks.",
-)
-async def update_pharmacy_endpoint(
-    pharmacy_id: str,
-    payload: PharmacyUpdate,
+@pharmacy_router.post("/licenses/", response_model=LicenseRead, status_code=status.HTTP_201_CREATED)
+async def create_license(
+    payload: LicenseInput,
     db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("admin", "pharmacy_staff")),
-) -> Pharmacy:
-    """Update a pharmacy record."""
-    pharmacy = await get_pharmacy(db, pharmacy_id)
+    current_user: User = Depends(require_roles(UserRole.PHARMACY_ADMIN)),
+):
+    pharmacy = await get_owned_pharmacy(db, current_user.id)
     if pharmacy is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pharmacy not found")
-    return await update_pharmacy(db, pharmacy, payload, actor_id=getattr(current_user, "id", None))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pharmacy application not found")
+    return await add_license(db, pharmacy, current_user, payload)
 
 
-@router.post(
-    "/pharmacists",
-    response_model=PharmacistRead,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create a pharmacist profile",
-    description="Register a pharmacist for a pharmacy. This is a verification-related write that is audited.",
-)
-async def create_pharmacist_endpoint(
-    payload: PharmacistCreate,
+@pharmacy_router.post("/pharmacists/", response_model=PharmacistRead, status_code=status.HTTP_201_CREATED)
+async def create_pharmacist(
+    payload: PharmacistInput,
     db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("admin", "pharmacist")),
-) -> Pharmacist:
-    """Create a pharmacist profile."""
-    return await create_pharmacist(db, payload.model_dump(), actor_id=getattr(current_user, "id", None))
+    current_user: User = Depends(require_roles(UserRole.PHARMACY_ADMIN)),
+):
+    pharmacy = await get_owned_pharmacy(db, current_user.id)
+    if pharmacy is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pharmacy application not found")
+    return await add_pharmacist(db, pharmacy, current_user, payload)
 
 
-@router.get(
-    "/pharmacists",
-    response_model=list[PharmacistRead],
-    summary="List pharmacists",
-    description="Return pharmacist profile records for authorized users.",
-)
-async def list_pharmacists_endpoint(
+@admin_router.get("/verifications/", response_model=list[VerificationQueueItem])
+async def list_verifications(
     db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("patient", "pharmacist", "pharmacy_staff", "admin")),
-) -> list[Pharmacist]:
-    """List pharmacist profiles."""
-    return await list_pharmacists(db)
+    _: User = Depends(require_roles(UserRole.PLATFORM_ADMIN)),
+):
+    return [
+        {
+            "pharmacy": pharmacy,
+            "licenses": pharmacy.licenses,
+            "pharmacist_in_charge": pharmacist_application_payload(
+                next(
+                    (item for item in pharmacy.pharmacists if item.user_id == pharmacy.owner_user_id),
+                    pharmacy.pharmacists[0],
+                )
+            )
+            if pharmacy.pharmacists
+            else None,
+        }
+        for pharmacy in await verification_queue(db)
+    ]
 
 
-@router.post(
-    "/licenses",
-    response_model=PharmacyLicenseRead,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create a pharmacy license",
-    description="Document a pharmacy license record prior to verification review.",
-)
-async def create_license_endpoint(
-    payload: PharmacyLicenseCreate,
+@admin_router.patch("/verifications/{pharmacy_id}/", response_model=VerificationRecordRead)
+async def decide_verification(
+    pharmacy_id: str,
+    payload: VerificationDecisionInput,
     db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("admin", "pharmacy_staff")),
-) -> PharmacyLicense:
-    """Create a pharmacy license record."""
-    return await create_pharmacy_license(db, payload, actor_id=getattr(current_user, "id", None))
+    current_user: User = Depends(require_roles(UserRole.PLATFORM_ADMIN)),
+):
+    return await review_application(db, pharmacy_id, current_user, payload)
 
 
-@router.post(
-    "/verification-records",
-    response_model=VerificationRecordRead,
-    status_code=status.HTTP_201_CREATED,
-    summary="Record a pharmacy verification decision",
-    description="Persist the status of a pharmacy or pharmacist verification review as an audit-friendly record.",
-)
-async def create_verification_record_endpoint(
-    payload: VerificationRecordCreate,
+@admin_router.get("/pharmacist-verifications/", response_model=list[PharmacistApplicationRead])
+async def list_pharmacist_verifications(
     db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("admin")),
-) -> VerificationRecord:
-    """Persist a verification decision."""
-    return await create_verification_record(db, payload, actor_id=getattr(current_user, "id", None))
+    _: User = Depends(require_roles(UserRole.PLATFORM_ADMIN)),
+):
+    return [pharmacist_application_payload(item) for item in await pharmacist_verification_queue(db)]
 
 
-@router.post(
-    "/medications",
-    response_model=MedicationRecordRead,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create a medication record",
-    description="Create a medication entry in the pharmacy catalog. This is a record-keeping action, not a diagnosis or dosage change.",
-)
-async def create_medication_endpoint(
-    payload: MedicationRecordCreate,
+@admin_router.patch("/pharmacist-verifications/{pharmacist_id}/", response_model=VerificationRecordRead)
+async def decide_pharmacist_verification(
+    pharmacist_id: str,
+    payload: VerificationDecisionInput,
     db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("pharmacist", "pharmacy_staff", "admin")),
-) -> MedicationRecord:
-    """Create a medication record."""
-    return await create_medication_record(db, payload, actor_id=getattr(current_user, "id", None))
-
-
-@router.get(
-    "/medications",
-    response_model=list[MedicationRecordRead],
-    summary="List medication records",
-    description="Return medication records available to a given user role.",
-)
-async def list_medications_endpoint(
-    db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("patient", "pharmacist", "pharmacy_staff", "admin")),
-) -> list[MedicationRecord]:
-    """List medication records."""
-    return await list_medication_records(db)
-
-
-@router.get(
-    "/medications/{medication_id}",
-    response_model=MedicationRecordRead,
-    summary="Fetch a medication record",
-    description="Return a single medication record by identifier.",
-)
-async def get_medication_endpoint(
-    medication_id: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("patient", "pharmacist", "pharmacy_staff", "admin")),
-) -> MedicationRecord:
-    """Get a medication record by id."""
-    medication = await get_medication_record(db, medication_id)
-    if medication is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Medication record not found")
-    return medication
-
-
-@router.put(
-    "/medications/{medication_id}",
-    response_model=MedicationRecordRead,
-    summary="Update a medication record",
-    description="Update medication metadata while avoiding automatic diagnosis or dosing changes.",
-)
-async def update_medication_endpoint(
-    medication_id: str,
-    payload: MedicationRecordUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("pharmacist", "pharmacy_staff", "admin")),
-) -> MedicationRecord:
-    """Update a medication record."""
-    medication = await get_medication_record(db, medication_id)
-    if medication is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Medication record not found")
-    return await update_medication_record(db, medication, payload, actor_id=getattr(current_user, "id", None))
-
-
-@router.delete(
-    "/medications/{medication_id}",
-    response_model=MessageResponse,
-    summary="Disable a medication record",
-    description="Soft-disable a medication record instead of deleting it, keeping the audit trail intact.",
-)
-async def delete_medication_endpoint(
-    medication_id: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("pharmacist", "pharmacy_staff", "admin")),
-) -> MessageResponse:
-    """Disable a medication record."""
-    medication = await get_medication_record(db, medication_id)
-    if medication is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Medication record not found")
-    await delete_medication_record(db, medication, actor_id=getattr(current_user, "id", None))
-    return MessageResponse(message="Medication record disabled")
-
-
-@router.post(
-    "/medications/{medication_id}/schedules",
-    response_model=MedicationScheduleRead,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create a medication schedule",
-    description="Add a medication schedule that records reminders or administration windows without prescribing treatment.",
-)
-async def create_schedule_endpoint(
-    medication_id: str,
-    payload: MedicationScheduleCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("pharmacist", "pharmacy_staff", "admin")),
-) -> MedicationSchedule:
-    """Create a schedule attached to a medication record."""
-    medication = await get_medication_record(db, medication_id)
-    if medication is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Medication record not found")
-    return await create_medication_schedule(db, medication, payload, actor_id=getattr(current_user, "id", None))
-
-
-@router.get(
-    "/medications/{medication_id}/schedules",
-    response_model=list[MedicationScheduleRead],
-    summary="List medication schedules",
-    description="Return all schedules associated with a medication record.",
-)
-async def list_schedules_endpoint(
-    medication_id: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("patient", "pharmacist", "pharmacy_staff", "admin")),
-) -> list[MedicationSchedule]:
-    """List schedules for a medication."""
-    return await list_medication_schedules(db, medication_id)
-
-
-@router.put(
-    "/medications/{medication_id}/schedules/{schedule_id}",
-    response_model=MedicationScheduleRead,
-    summary="Update a medication schedule",
-    description="Adjust schedule timing metadata without altering the underlying medication order.",
-)
-async def update_schedule_endpoint(
-    medication_id: str,
-    schedule_id: str,
-    payload: MedicationScheduleCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: object = Depends(require_roles("pharmacist", "pharmacy_staff", "admin")),
-) -> MedicationSchedule:
-    """Update a medication schedule."""
-    schedules = await list_medication_schedules(db, medication_id)
-    schedule = next((item for item in schedules if item.id == schedule_id), None)
-    if schedule is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Medication schedule not found")
-    return await update_medication_schedule(db, schedule, payload, actor_id=getattr(current_user, "id", None))
+    current_user: User = Depends(require_roles(UserRole.PLATFORM_ADMIN)),
+):
+    return await review_pharmacist_application(db, pharmacist_id, current_user, payload)

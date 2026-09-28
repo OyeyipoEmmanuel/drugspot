@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, Clock3, MessageCircle, PackageCheck, Pill, ShoppingBag } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3, MessageCircle, PackageCheck, Pill, ScanLine, ShoppingBag } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -23,7 +23,10 @@ export function HomePage() {
     <div className="space-y-7">
       <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div><p className="text-sm font-semibold text-primary">{new Intl.DateTimeFormat("en-NG", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</p><h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{t("home.greeting", { name: session?.user.firstName })}</h1><p className="mt-2 text-muted-foreground">{t("home.subtitle")}</p></div>
-        <Button asChild><Link to="/marketplace"><ShoppingBag />Order medicine</Link></Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button asChild variant="outline"><Link to="/medicines/scan"><ScanLine />Scan prescription</Link></Button>
+          <Button asChild><Link to="/marketplace"><ShoppingBag />Order medicine</Link></Button>
+        </div>
       </section>
 
       <div className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr]">

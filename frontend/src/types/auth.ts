@@ -1,4 +1,9 @@
-export type UserRole = "patient" | "pharmacist" | "pharmacy_admin" | "platform_admin";
+export type UserRole =
+  | "patient"
+  | "pharmacist_applicant"
+  | "pharmacist"
+  | "pharmacy_admin"
+  | "platform_admin";
 
 export interface User {
   id: string;
@@ -25,4 +30,18 @@ export interface RegisterInput extends LoginInput {
   firstName: string;
   lastName: string;
   phone: string;
+}
+
+export interface PatientProfileInput {
+  dateOfBirth?: string;
+  gender?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  allergies?: string;
+  chronicConditions?: string;
+}
+
+export interface PatientProfile extends PatientProfileInput {
+  id: string;
+  userId: string;
 }

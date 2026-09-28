@@ -54,10 +54,9 @@ secrets/
 *.pem
 *.key
 
-# Alembic local config overrides
-alembic.ini
-
 # Node / frontend if present
 node_modules/
 .next/
 out/
+# Locally uploaded product images
+backend/uploads/

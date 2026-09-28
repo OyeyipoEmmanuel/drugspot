@@ -11,7 +11,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { useCart } from "@/providers/cart-provider";
 
 const navItems = [
-  { key: "home", path: "/", icon: Home },
+  { key: "home", path: "/home", icon: Home },
   { key: "medicines", path: "/medicines", icon: Pill },
   { key: "orders", path: "/orders", icon: Package },
   { key: "pharmacist", path: "/pharmacist", icon: MessageCircle },
@@ -34,7 +34,7 @@ export function PatientLayout() {
               <NavLink
                 key={key}
                 to={path}
-                end={path === "/"}
+                end={path === "/home"}
                 className={({ isActive }) => cn("flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground", isActive && "bg-secondary text-primary")}
               >
                 <Icon className="size-4" />
@@ -61,7 +61,7 @@ export function PatientLayout() {
             <NavLink
               key={key}
               to={path}
-              end={path === "/"}
+              end={path === "/home"}
               className={({ isActive }) =>
                 cn(
                   "flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[0.68rem] font-medium text-muted-foreground",
