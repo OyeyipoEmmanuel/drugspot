@@ -22,6 +22,20 @@ def test_health_and_frontend_auth_contract(api) -> None:
     assert onboarding.json() == {"onboardingComplete": True}
 
 
+def test_production_frontend_origin_is_allowed(api) -> None:
+    client, _ = api
+    response = client.options(
+        "/api/v1/pharmacies/",
+        headers={
+            "Origin": "https://drugspot.vercel.app",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "https://drugspot.vercel.app"
+
+
 def test_public_registration_cannot_select_privileged_role(api) -> None:
     client, _ = api
     response = client.post(

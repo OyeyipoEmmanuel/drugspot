@@ -111,3 +111,10 @@ uv run pytest
 uv run alembic check
 ```
 
+## Production deployment
+
+The frontend origin is `https://drugspot.vercel.app` and is included in the
+default CORS allowlist. In Pxxl, configure a persistent PostgreSQL
+`DATABASE_URL`, a production `AUTH_SECRET`, and use the checked-in `Procfile`
+start command. It applies Alembic migrations before starting the API.
+
