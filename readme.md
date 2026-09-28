@@ -178,6 +178,40 @@ Apply migrations and start the API with:
 alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
+## Docker deployment
+
+From the repository root, start the full stack with:
+
+```powershell
+docker compose up --build -d
+```
+
+This launches the PostgreSQL container and the FastAPI app together. The backend entrypoint runs:
+
+```sh
+python -m alembic upgrade head
+python -m app.db.seed
+exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+To stop the stack:
+
+```powershell
+docker compose down
+```
+
+To rebuild after code changes:
+
+```powershell
+docker compose up --build -d --force-recreate
+```
+
+Before starting the stack, copy the backend environment sample and set a strong `AUTH_SECRET`:
+
+```powershell
+Copy-Item backend/.env.example backend/.env
+```
+
 ## External-service notes
 
 - OCR requires an `OCR_SPACE_API_KEY`. Without it, manual medicine entry still

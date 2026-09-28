@@ -122,3 +122,44 @@ default CORS allowlist. In Pxxl, configure a persistent PostgreSQL
 `DATABASE_URL`, a production `AUTH_SECRET`, and use the checked-in `Procfile`
 start command. It applies Alembic migrations before starting the API.
 
+## Docker startup (recommended local deployment)
+
+From the repository root:
+
+```powershell
+docker compose up --build -d
+```
+
+This starts:
+
+- PostgreSQL on `localhost:5432`
+- the FastAPI backend on `http://localhost:8000`
+- automatic Alembic migrations and the public seed script during backend startup
+
+To stop it:
+
+```powershell
+docker compose down
+```
+
+To rebuild after code changes:
+
+```powershell
+docker compose up --build -d --force-recreate
+```
+
+If you prefer a one-off container run instead of Compose:
+
+```powershell
+docker build -f backend/Dockerfile -t drugspot-backend ./backend
+docker run --rm -p 8000:8000 --env-file backend/.env drugspot-backend
+```
+
+For local development, copy `.env.example` into `backend/.env` before running the stack and set a strong `AUTH_SECRET` plus a real PostgreSQL URL if you want the containerized deployment to use Postgres instead of the default SQLite path.
+
+## Team usage notes
+
+- The backend bootstrap path is: migrate -> seed -> start uvicorn.
+- The public seed only inserts approved pharmacies and marketplace products; it does not create patient, order, or pharmacist records.
+- Any authenticated path still requires creating a real patient, pharmacy, or platform admin via the live auth flow after the service is up.
+
