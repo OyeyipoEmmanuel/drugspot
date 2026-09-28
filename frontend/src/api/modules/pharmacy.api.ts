@@ -1,11 +1,11 @@
 import { api } from "@/api/API";
 import { endpoints } from "@/api/endpoints";
-import { useLiveBackend } from "@/api/mode";
+import { useMockMode } from "@/api/mode";
 import { mockPharmacy } from "@/mocks/mock-pharmacy";
 import type { OrderStatus } from "@/types/marketplace";
 import type { InventoryItem, InventoryUpdateInput, PharmacyCustomer, PharmacyDashboardSummary, PharmacyOrder, ProductCreateInput, RefillRequest } from "@/types/pharmacy";
 
-const useMocks = !useLiveBackend;
+const useMocks = useMockMode;
 
 export const pharmacyApi = {
   workspaceAccess: () => api.get<{ approved: boolean; pharmacyId: string; pharmacyName: string; verificationStatus: string }>(endpoints.pharmacyWorkspace.access),

@@ -10,8 +10,12 @@ cd backend
 Copy-Item .env.example .env
 uv sync --all-groups
 uv run alembic upgrade head
+uv run python -m app.cli create-admin --email admin@example.com --phone +2348000000000 --first-name Platform --last-name Admin --password "replace-this-password"
+uv run python -m app.db.seed
 uv run uvicorn app.main:app --reload --port 8000
 ```
+
+The public catalogue is intentionally seeded from approved pharmacy + product records only; no user-bound rows are created by the seed command. The admin bootstrap step is required only so pharmacy rows have a valid owner_user_id in the schema.
 
 The API documentation is available at `http://localhost:8000/docs`. The React app
 uses `http://localhost:8000/api/v1` by default.

@@ -1,5 +1,6 @@
 import { api } from "@/api/API";
 import { endpoints } from "@/api/endpoints";
+import { useMockMode } from "@/api/mode";
 import { mockDb } from "@/mocks/mock-db";
 import type {
   AdherenceStatus,
@@ -8,7 +9,7 @@ import type {
   OcrMedicationDraft,
 } from "@/types/medication";
 
-const useMocks = import.meta.env.VITE_USE_MOCK_API !== "false";
+const useMocks = useMockMode;
 
 export const medicationsApi = {
   list() {

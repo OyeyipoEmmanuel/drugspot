@@ -1,10 +1,10 @@
 import { api } from "@/api/API";
 import { endpoints } from "@/api/endpoints";
-import { useLiveBackend } from "@/api/mode";
+import { useMockMode } from "@/api/mode";
 import { mockMarketplace } from "@/mocks/mock-marketplace";
 import type { CheckoutInput, Order, PreOrderRequest } from "@/types/marketplace";
 
-const useMocks = !useLiveBackend;
+const useMocks = useMockMode;
 
 export const ordersApi = {
   list() {

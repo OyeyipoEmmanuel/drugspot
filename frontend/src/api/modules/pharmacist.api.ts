@@ -1,9 +1,10 @@
 import { api } from "@/api/API";
 import { endpoints } from "@/api/endpoints";
+import { useMockMode } from "@/api/mode";
 import { mockPharmacist } from "@/mocks/mock-pharmacist";
 import type { ConversationMessage, PharmacistConversation, PharmacistProfile, SendMessageInput, StartConversationInput } from "@/types/pharmacist";
 
-const useMocks = import.meta.env.VITE_USE_MOCK_API !== "false";
+const useMocks = useMockMode;
 
 export const pharmacistApi = {
   listPharmacists: () => useMocks ? mockPharmacist.listPharmacists() : api.get<PharmacistProfile[]>(endpoints.pharmacists.list),

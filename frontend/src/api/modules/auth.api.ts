@@ -1,11 +1,11 @@
 import { api } from "@/api/API";
 import { endpoints } from "@/api/endpoints";
-import { useLiveBackend } from "@/api/mode";
+import { useMockMode } from "@/api/mode";
 import { mockDb } from "@/mocks/mock-db";
 import type { AuthSession, LoginInput, PatientProfile, PatientProfileInput, RegisterInput } from "@/types/auth";
 import type { PharmacyVendorRegistrationInput } from "@/types/verification";
 
-const useMocks = !useLiveBackend;
+const useMocks = useMockMode;
 
 export const authApi = {
   login(input: LoginInput) {
