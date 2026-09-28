@@ -1,7 +1,5 @@
 """DrugSpot FastAPI application."""
 
-from pathlib import Path
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -14,10 +12,10 @@ from .commerce.router import workspace_router as commerce_workspace_router
 from .config import get_settings
 from .ocr.router import router as ocr_router
 from .pharmacy_verification.router import admin_router, pharmacy_router, professional_router, public_router
+from .storage import UPLOADS_DIRECTORY
 
 settings = get_settings()
-uploads_directory = Path(__file__).resolve().parents[1] / "uploads"
-uploads_directory.mkdir(parents=True, exist_ok=True)
+UPLOADS_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(
     title=settings.app_name,
@@ -31,7 +29,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.mount("/uploads", StaticFiles(directory=uploads_directory), name="uploads")
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIRECTORY), name="uploads")
 
 
 @app.get("/health", tags=["system"])
