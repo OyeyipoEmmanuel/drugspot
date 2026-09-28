@@ -15,7 +15,6 @@ from .pharmacy_verification.router import admin_router, pharmacy_router, profess
 from .storage import UPLOADS_DIRECTORY
 
 settings = get_settings()
-UPLOADS_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(
     title=settings.app_name,
