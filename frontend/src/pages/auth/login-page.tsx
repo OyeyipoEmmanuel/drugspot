@@ -8,7 +8,6 @@ import { z } from "zod";
 
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
-import { useLiveBackend } from "@/api/mode";
 import { useAuth } from "@/providers/auth-provider";
 
 const schema = z.object({
@@ -23,35 +22,99 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [submitError, setSubmitError] = useState("");
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: useLiveBackend ? { email: "", password: "" } : { email: "patient@drugspot.ng", password: "Password123!" } });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: "", password: "" },
+  });
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError("");
     try {
       const session = await login(values);
       const requestedPath = (location.state as { from?: string } | null)?.from;
-      const fallback = session.user.role === "platform_admin" ? "/admin" : session.user.role === "pharmacist_applicant" ? "/pharmacist-application" : session.user.role === "pharmacy_admin" && useLiveBackend ? "/pharmacy-application" : session.user.role === "patient" ? "/" : "/pharmacy";
+      const fallback =
+        session.user.role === "platform_admin"
+          ? "/admin"
+          : session.user.role === "pharmacist_applicant"
+            ? "/pharmacist-application"
+            : session.user.role === "pharmacy_admin"
+              ? "/pharmacy-application"
+              : session.user.role === "patient"
+                ? "/home"
+                : "/pharmacy";
       navigate(requestedPath ?? fallback, { replace: true });
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : t("auth.signInError"));
+      setSubmitError(
+        error instanceof Error ? error.message : t("auth.signInError"),
+      );
     }
   });
 
   return (
     <section className="w-full max-w-md rounded-3xl border bg-card p-6 shadow-xl shadow-blue-950/5 sm:p-8">
-      <div className="grid size-12 place-items-center rounded-2xl bg-secondary text-primary"><LockKeyhole /></div>
+      <div className="grid size-12 place-items-center rounded-2xl bg-secondary text-primary">
+        <LockKeyhole />
+      </div>
       <h1 className="mt-5 text-3xl font-bold">{t("auth.welcomeBack")}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{t("auth.signInSubtitle")}</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {t("auth.signInSubtitle")}
+      </p>
       <form className="mt-7 space-y-5" onSubmit={onSubmit}>
-        <FormField id="email" label={t("auth.email")} type="email" autoComplete="email" error={errors.email?.message} {...register("email")} />
-        <FormField id="password" label={t("auth.password")} type="password" autoComplete="current-password" error={errors.password?.message} {...register("password")} />
-        <div className="text-right"><Link to="/forgot-password" className="text-sm font-semibold text-primary hover:underline">{t("auth.forgotPassword")}</Link></div>
-        {submitError && <p className="rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">{submitError}</p>}
-        <Button className="w-full" size="lg" disabled={isSubmitting}>{isSubmitting && <LoaderCircle className="animate-spin" />}{t("auth.signIn")}</Button>
+        <FormField
+          id="email"
+          label={t("auth.email")}
+          type="email"
+          autoComplete="email"
+          error={errors.email?.message}
+          {...register("email")}
+        />
+        <FormField
+          id="password"
+          label={t("auth.password")}
+          type="password"
+          autoComplete="current-password"
+          error={errors.password?.message}
+          {...register("password")}
+        />
+        <div className="text-right">
+          <Link
+            to="/forgot-password"
+            className="text-sm font-semibold text-primary hover:underline"
+          >
+            {t("auth.forgotPassword")}
+          </Link>
+        </div>
+        {submitError && (
+          <p className="rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">
+            {submitError}
+          </p>
+        )}
+        <Button className="w-full" size="lg" disabled={isSubmitting}>
+          {isSubmitting && <LoaderCircle className="animate-spin" />}
+          {t("auth.signIn")}
+        </Button>
       </form>
-      <p className="mt-6 text-center text-sm text-muted-foreground">{t("auth.noAccount")} <Link to="/register" className="font-semibold text-primary hover:underline">{t("auth.createAccount")}</Link></p>
-      <p className="mt-3 text-center text-sm text-muted-foreground"><Link to="/register/pharmacy" className="font-semibold text-primary hover:underline">Register your pharmacy</Link></p>
-      {!useLiveBackend && <p className="mt-5 rounded-xl bg-muted p-3 text-xs leading-5 text-muted-foreground">{t("auth.demoHint")}</p>}
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        {t("auth.noAccount")}{" "}
+        <Link
+          to="/register"
+          className="font-semibold text-primary hover:underline"
+        >
+          {t("auth.createAccount")}
+        </Link>
+      </p>
+      <p className="mt-3 text-center text-sm text-muted-foreground">
+        <Link
+          to="/register/pharmacy"
+          className="font-semibold text-primary hover:underline"
+        >
+          Register your pharmacy
+        </Link>
+      </p>
     </section>
   );
 }

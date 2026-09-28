@@ -49,8 +49,14 @@ export interface Product {
   strength: string;
   packSize: string;
   description: string;
+  imageUrl?: string;
   requiresPrescription: boolean;
   requiresPharmacistReview: boolean;
+  nafdacNumber?: string;
+  nafdacVerified?: boolean;
+  nafdacProductName?: string;
+  nafdacManufacturer?: string;
+  nafdacExpiryDate?: string;
   offers: ProductOffer[];
 }
 

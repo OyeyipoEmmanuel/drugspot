@@ -45,6 +45,14 @@ export interface MedicationInput {
 
 export interface OcrMedicationDraft extends Partial<MedicationInput> {
   confidence: number;
+  warnings: string[];
+  detectedNafdacNumber?: string;
+  nafdacVerified?: boolean;
+}
+
+export interface OcrExtractionResult {
+  medications: OcrMedicationDraft[];
   sourceFileName: string;
+  extractedText: string;
   warnings: string[];
 }

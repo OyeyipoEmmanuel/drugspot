@@ -1,6 +1,6 @@
 """Frontend-compatible commerce schemas."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
 from pydantic import Field
@@ -18,13 +18,42 @@ class ProductCreate(ApiModel):
     strength: str = Field(default="", max_length=80)
     pack_size: str = Field(default="", max_length=100)
     description: str = Field(default="", max_length=2000)
+    image_url: str = Field(min_length=5, max_length=1000)
     sku: str = Field(min_length=2, max_length=100)
+    nafdac_number: str = Field(min_length=3, max_length=50)
     stock_count: int = Field(default=0, ge=0)
     reorder_level: int = Field(default=5, ge=0)
     unit_price: float = Field(gt=0)
     requires_prescription: bool = False
     requires_pharmacist_review: bool = False
     preorder_supported: bool = False
+
+
+class NafdacVerificationInput(ApiModel):
+    nafdac_number: str = Field(min_length=3, max_length=50)
+    product_name: str = Field(min_length=2, max_length=200)
+    strength: str = Field(default="", max_length=80)
+
+
+class NafdacVerificationResult(ApiModel):
+    verified: bool
+    reason: str
+    nafdac_number: str
+    nafdac_product_id: int | None = None
+    official_name: str = ""
+    strength: str = ""
+    pack_size: str = ""
+    description: str = ""
+    composition: str = ""
+    ingredient: str = ""
+    manufacturer: str = ""
+    approval_date: date | None = None
+    expiry_date: date | None = None
+    name_matches: bool = False
+
+
+class ProductImageUploadResult(ApiModel):
+    image_url: str
 
 
 class InventoryUpdate(ApiModel):

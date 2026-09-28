@@ -14,7 +14,7 @@ from ..models import add_audit_log
 from ..pharmacy_verification.models import Pharmacist, Pharmacy, VerificationStatus
 from ..pharmacy_verification.service import to_public
 from .models import Order, OrderItem, OrderStatus, PaymentStatus, Product, RefillRequest, RefillStatus
-from .schemas import CheckoutInput, InventoryUpdate, ProductCreate
+from .schemas import CheckoutInput, InventoryUpdate, NafdacVerificationResult, ProductCreate
 
 
 def stock_status(product: Product) -> str:
@@ -36,10 +36,16 @@ def inventory_payload(product: Product) -> dict:
         "strength": product.strength,
         "sku": product.sku,
         "category": product.category,
+        "imageUrl": product.image_url,
         "stockCount": product.stock_count,
         "reorderLevel": product.reorder_level,
         "unitPrice": float(product.unit_price),
         "requiresPrescription": product.requires_prescription,
+        "nafdacNumber": product.nafdac_number,
+        "nafdacVerified": product.nafdac_verified,
+        "nafdacProductName": product.nafdac_product_name,
+        "nafdacManufacturer": product.nafdac_manufacturer,
+        "nafdacExpiryDate": product.nafdac_expiry_date,
         "status": inventory_status(product),
         "updatedAt": product.updated_at,
     }
@@ -56,8 +62,14 @@ def product_payload(product: Product) -> dict:
         "strength": product.strength,
         "packSize": product.pack_size,
         "description": product.description,
+        "imageUrl": product.image_url,
         "requiresPrescription": product.requires_prescription,
         "requiresPharmacistReview": product.requires_pharmacist_review,
+        "nafdacNumber": product.nafdac_number,
+        "nafdacVerified": product.nafdac_verified,
+        "nafdacProductName": product.nafdac_product_name,
+        "nafdacManufacturer": product.nafdac_manufacturer,
+        "nafdacExpiryDate": product.nafdac_expiry_date,
         "offers": [
             {
                 "id": product.id,
@@ -119,10 +131,39 @@ async def get_public_product(session: AsyncSession, product_id: str) -> dict:
     return product
 
 
-async def create_product(session: AsyncSession, pharmacy: Pharmacy, actor: User, payload: ProductCreate) -> Product:
+async def create_product(
+    session: AsyncSession,
+    pharmacy: Pharmacy,
+    actor: User,
+    payload: ProductCreate,
+    nafdac: NafdacVerificationResult,
+) -> Product:
     if await session.scalar(select(Product.id).where(Product.sku == payload.sku)):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="SKU is already registered")
-    product = Product(pharmacy_id=pharmacy.id, **payload.model_dump(by_alias=False))
+    if not nafdac.verified:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=nafdac.reason)
+    product_data = payload.model_dump(by_alias=False)
+    product_data.update(
+        name=nafdac.official_name,
+        generic_name=nafdac.ingredient or payload.generic_name,
+        brand=nafdac.manufacturer or payload.brand,
+        form=payload.form or nafdac.description,
+        strength=nafdac.strength or payload.strength,
+        pack_size=nafdac.pack_size or payload.pack_size,
+        description=nafdac.description or nafdac.composition or payload.description,
+        nafdac_number=nafdac.nafdac_number,
+    )
+    product = Product(
+        pharmacy_id=pharmacy.id,
+        **product_data,
+        nafdac_product_id=nafdac.nafdac_product_id,
+        nafdac_verified=True,
+        nafdac_verified_at=datetime.now(UTC),
+        nafdac_product_name=nafdac.official_name,
+        nafdac_manufacturer=nafdac.manufacturer,
+        nafdac_approval_date=nafdac.approval_date,
+        nafdac_expiry_date=nafdac.expiry_date,
+    )
     session.add(product)
     await session.flush()
     add_audit_log(session, actor_id=actor.id, entity_type="product", entity_id=product.id, action="created")

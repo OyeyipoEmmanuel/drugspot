@@ -12,6 +12,7 @@ from app.database import Base
 from app import models as shared_models  # noqa: F401
 from app.auth import models as auth_models  # noqa: F401
 from app.commerce import models as commerce_models  # noqa: F401
+from app.care import models as care_models  # noqa: F401
 from app.pharmacy_verification import models as pharmacy_models  # noqa: F401
 
 config = context.config

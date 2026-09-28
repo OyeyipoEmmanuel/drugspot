@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -58,7 +58,16 @@ class Product(Base):
     strength: Mapped[str] = mapped_column(String(80), default="", nullable=False)
     pack_size: Mapped[str] = mapped_column(String(100), default="", nullable=False)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    image_url: Mapped[str] = mapped_column(String(1000), default="", nullable=False)
     sku: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    nafdac_number: Mapped[str] = mapped_column(String(50), default="", nullable=False, index=True)
+    nafdac_product_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    nafdac_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    nafdac_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    nafdac_product_name: Mapped[str] = mapped_column(String(200), default="", nullable=False)
+    nafdac_manufacturer: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    nafdac_approval_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    nafdac_expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     stock_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     reorder_level: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

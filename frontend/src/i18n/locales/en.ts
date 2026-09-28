@@ -44,7 +44,6 @@ export const en = {
     registerSubtitle: "Set up your patient account. You can update these details later.",
     signInError: "We could not sign you in.",
     registerError: "We could not create your account.",
-    demoHint: "Demo: use patient@drugspot.ng for a patient, pharmacist@drugspot.ng for a pharmacist, pharmacy@drugspot.ng for pharmacy staff, or admin@drugspot.ng for an administrator. Any password with at least 8 characters works in mock mode.",
     resetPassword: "Reset your password",
     resetSubtitle: "Enter the email address linked to your DrugSpot account.",
     sendReset: "Send reset instructions",

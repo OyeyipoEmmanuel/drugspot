@@ -1,4 +1,8 @@
-import type { FulfillmentMethod, OrderStatus, PaymentStatus } from "@/types/marketplace";
+import type {
+  FulfillmentMethod,
+  OrderStatus,
+  PaymentStatus,
+} from "@/types/marketplace";
 
 export type InventoryStatus = "in_stock" | "low_stock" | "out_of_stock";
 
@@ -8,10 +12,16 @@ export interface InventoryItem {
   strength: string;
   sku: string;
   category: string;
+  imageUrl?: string;
   stockCount: number;
   reorderLevel: number;
   unitPrice: number;
   requiresPrescription: boolean;
+  nafdacNumber?: string;
+  nafdacVerified?: boolean;
+  nafdacProductName?: string;
+  nafdacManufacturer?: string;
+  nafdacExpiryDate?: string;
   status: InventoryStatus;
   updatedAt: string;
 }
@@ -60,6 +70,7 @@ export interface RefillRequest {
 }
 
 export interface PharmacyDashboardSummary {
+  pharmacyName: string;
   openOrders: number;
   lowStockItems: number;
   refillRequests: number;
@@ -86,7 +97,36 @@ export interface ProductCreateInput extends InventoryUpdateInput {
   packSize?: string;
   description?: string;
   sku: string;
+  imageUrl: string;
+  nafdacNumber: string;
   requiresPrescription: boolean;
   requiresPharmacistReview: boolean;
   preorderSupported: boolean;
+}
+
+export interface NafdacVerificationInput {
+  nafdacNumber: string;
+  productName: string;
+  strength?: string;
+}
+
+export interface NafdacVerificationResult {
+  verified: boolean;
+  reason: string;
+  nafdacNumber: string;
+  nafdacProductId?: number;
+  officialName: string;
+  strength: string;
+  packSize: string;
+  description: string;
+  composition: string;
+  ingredient: string;
+  manufacturer: string;
+  approvalDate?: string;
+  expiryDate?: string;
+  nameMatches: boolean;
+}
+
+export interface ProductImageUploadResult {
+  imageUrl: string;
 }

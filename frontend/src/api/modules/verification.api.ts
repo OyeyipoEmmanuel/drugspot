@@ -21,7 +21,9 @@ export const verificationApi = {
     );
   },
   application() {
-    return api.get<PharmacyApplication>(endpoints.pharmacyWorkspace.application);
+    return api.get<PharmacyApplication>(
+      endpoints.pharmacyWorkspace.application,
+    );
   },
   addLicense(input: PharmacyLicenseInput) {
     return api.post<PharmacyLicense, PharmacyLicenseInput>(
@@ -39,10 +41,14 @@ export const verificationApi = {
     return api.get<VerificationQueueItem[]>(endpoints.admin.verifications);
   },
   pharmacistApplication() {
-    return api.get<PharmacistApplication>(endpoints.pharmacistApplications.current);
+    return api.get<PharmacistApplication>(
+      endpoints.pharmacistApplications.current,
+    );
   },
   pharmacistQueue() {
-    return api.get<PharmacistApplication[]>(endpoints.admin.pharmacistVerifications);
+    return api.get<PharmacistApplication[]>(
+      endpoints.admin.pharmacistVerifications,
+    );
   },
   decidePharmacist(pharmacistId: string, input: VerificationDecisionInput) {
     return api.patch<VerificationRecord, VerificationDecisionInput>(
@@ -57,4 +63,3 @@ export const verificationApi = {
     );
   },
 };
-

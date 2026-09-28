@@ -1,9 +1,15 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { api } from "@/api/API";
 import { authApi } from "@/api/modules/auth.api";
-import { useLiveBackend } from "@/api/mode";
-import { mockDb } from "@/mocks/mock-db";
+import { sessionStorage } from "@/lib/session-storage";
 import type { AuthSession, LoginInput, RegisterInput } from "@/types/auth";
 import type { PharmacyVendorRegistrationInput } from "@/types/verification";
 
@@ -12,7 +18,9 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (input: LoginInput) => Promise<AuthSession>;
   register: (input: RegisterInput) => Promise<AuthSession>;
-  registerPharmacy: (input: PharmacyVendorRegistrationInput) => Promise<AuthSession>;
+  registerPharmacy: (
+    input: PharmacyVendorRegistrationInput,
+  ) => Promise<AuthSession>;
   logout: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -21,20 +29,24 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<AuthSession | null>(() => mockDb.session.read());
+  const [session, setSession] = useState<AuthSession | null>(() =>
+    sessionStorage.read(),
+  );
   const hydrated = useRef(false);
 
   useEffect(() => {
     api.setAccessTokenProvider(() => session?.accessToken ?? null);
-    mockDb.session.save(session);
+    sessionStorage.save(session);
   }, [session]);
 
   useEffect(() => {
-    if (!useLiveBackend || !session || hydrated.current) return;
+    if (!session || hydrated.current) return;
     hydrated.current = true;
     void authApi
       .profile()
-      .then((user) => setSession((current) => (current ? { ...current, user } : current)))
+      .then((user) =>
+        setSession((current) => (current ? { ...current, user } : current)),
+      )
       .catch(async () => {
         if (!session.refreshToken) {
           setSession(null);
@@ -70,14 +82,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async logout() {
         const refreshToken = session?.refreshToken;
         try {
-          if (useLiveBackend && refreshToken) await authApi.logout(refreshToken);
+          if (refreshToken) await authApi.logout(refreshToken);
         } finally {
           setSession(null);
           hydrated.current = false;
         }
       },
       async refreshProfile() {
-        if (!useLiveBackend) return;
         const user = await authApi.profile();
         setSession((current) => (current ? { ...current, user } : current));
       },
@@ -85,7 +96,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await authApi.completeOnboarding();
         setSession((current) =>
           current
-            ? { ...current, user: { ...current.user, onboardingComplete: true } }
+            ? {
+                ...current,
+                user: { ...current.user, onboardingComplete: true },
+              }
             : current,
         );
       },

@@ -58,3 +58,5 @@ secrets/
 node_modules/
 .next/
 out/
+# Locally uploaded product images
+backend/uploads/

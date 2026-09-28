@@ -42,13 +42,15 @@ const PharmacyApplicationPage = lazy(() => import("@/pages/pharmacy/pharmacy-app
 const PlaceholderPage = lazy(() => import("@/pages/placeholder-page").then((module) => ({ default: module.PlaceholderPage })));
 const ProfilePage = lazy(() => import("@/pages/profile-page").then((module) => ({ default: module.ProfilePage })));
 const UnauthorizedPage = lazy(() => import("@/pages/unauthorized-page").then((module) => ({ default: module.UnauthorizedPage })));
+const NotFoundPage = lazy(() => import("@/pages/not-found-page").then((module) => ({ default: module.NotFoundPage })));
 
 export default function App() {
   return (
     <Suspense fallback={<LoadingState label="Opening DrugSpot…" />}><Routes>
+      <Route index element={<WelcomePage />} />
+      <Route path="welcome" element={<Navigate to="/" replace />} />
       <Route element={<GuestOnly />}>
         <Route element={<AuthLayout />}>
-          <Route path="welcome" element={<WelcomePage />} />
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />
           <Route path="register/pharmacy" element={<RegisterPharmacyPage />} />
@@ -67,7 +69,7 @@ export default function App() {
       </Route>
       <Route element={<RequireAuth roles={["patient"]} />}>
         <Route element={<PatientLayout />}>
-          <Route index element={<HomePage />} />
+          <Route path="home" element={<HomePage />} />
           <Route path="medicines" element={<MedicationsPage />} />
           <Route path="medicines/new" element={<MedicationFormPage />} />
           <Route path="medicines/scan" element={<OcrScanPage />} />
@@ -109,7 +111,7 @@ export default function App() {
         </Route>
       </Route>
       <Route path="unauthorized" element={<UnauthorizedPage />} />
-      <Route path="*" element={<Navigate to="/welcome" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes></Suspense>
   );
 }
