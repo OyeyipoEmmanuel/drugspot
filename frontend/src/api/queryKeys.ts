@@ -4,9 +4,11 @@ export const queryKeys = {
     all: ["medications"] as const,
     detail: (id: string) => ["medications", id] as const,
   },
-  pharmacies: (filters?: Record<string, unknown>) => ["pharmacies", filters] as const,
+  pharmacies: (filters?: Record<string, unknown>) =>
+    ["pharmacies", filters] as const,
   pharmacy: (id: string) => ["pharmacies", id] as const,
-  products: (filters?: Record<string, unknown>) => ["products", filters] as const,
+  products: (filters?: Record<string, unknown>) =>
+    ["products", filters] as const,
   product: (id: string) => ["products", id] as const,
   orders: {
     all: ["orders"] as const,
@@ -18,7 +20,9 @@ export const queryKeys = {
   },
   conversations: {
     all: ["conversations"] as const,
-    detail: (id: string) => ["conversations", id] as const,
+    list: (scope = "patient") => ["conversations", "list", scope] as const,
+    detail: (id: string, scope = "patient") =>
+      ["conversations", "detail", id, scope] as const,
   },
   refills: ["refills"] as const,
   verifications: ["admin", "verifications"] as const,

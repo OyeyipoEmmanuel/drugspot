@@ -18,7 +18,10 @@ export const endpoints = {
     adherence: (id: string) => `/medications/${id}/adherence/`,
     ocr: "/medications/ocr/",
   },
-  pharmacies: { list: "/pharmacies/", detail: (id: string) => `/pharmacies/${id}/` },
+  pharmacies: {
+    list: "/pharmacies/",
+    detail: (id: string) => `/pharmacies/${id}/`,
+  },
   products: { list: "/products/", detail: (id: string) => `/products/${id}/` },
   orders: {
     list: "/orders/",
@@ -26,7 +29,10 @@ export const endpoints = {
     detail: (id: string) => `/orders/${id}/`,
   },
   preorders: { list: "/pre-order-requests/" },
-  pharmacists: { list: "/pharmacists/", detail: (id: string) => `/pharmacists/${id}/` },
+  pharmacists: {
+    list: "/pharmacists/",
+    detail: (id: string) => `/pharmacists/${id}/`,
+  },
   pharmacistApplications: {
     current: "/pharmacists/application/",
   },
@@ -48,6 +54,8 @@ export const endpoints = {
     orders: "/pharmacy/orders/",
     orderStatus: (id: string) => `/pharmacy/orders/${id}/status/`,
     inventory: "/pharmacy/inventory/",
+    verifyNafdac: "/pharmacy/inventory/verify-nafdac/",
+    productImage: "/pharmacy/inventory/product-image/",
     inventoryItem: (id: string) => `/pharmacy/inventory/${id}/`,
     customers: "/pharmacy/customers/",
     refills: "/pharmacy/refill-requests/",
@@ -57,6 +65,7 @@ export const endpoints = {
     verifications: "/admin/verifications/",
     verification: (id: string) => `/admin/verifications/${id}/`,
     pharmacistVerifications: "/admin/pharmacist-verifications/",
-    pharmacistVerification: (id: string) => `/admin/pharmacist-verifications/${id}/`,
+    pharmacistVerification: (id: string) =>
+      `/admin/pharmacist-verifications/${id}/`,
   },
 } as const;

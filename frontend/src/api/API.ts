@@ -28,8 +28,18 @@ export class ApiError extends Error {
 
 export type AccessTokenProvider = () => string | null | Promise<string | null>;
 
-const DEFAULT_BASE_URL = "http://localhost:8000/api/v1";
+const DEFAULT_BASE_URL = import.meta.env.PROD
+  ? "https://drugspot.pxxlspace.cv/api/v1"
+  : "http://localhost:8000/api/v1";
 const DEFAULT_TIMEOUT_MS = 15_000;
+const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+const pointsToLocalhost = configuredBaseUrl
+  ? /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(?:\/|$)/i.test(configuredBaseUrl)
+  : false;
+const effectiveBaseUrl =
+  import.meta.env.PROD && pointsToLocalhost
+    ? DEFAULT_BASE_URL
+    : configuredBaseUrl || DEFAULT_BASE_URL;
 
 function buildUrl(
   baseUrl: string,
@@ -38,7 +48,7 @@ function buildUrl(
 ) {
   const normalizedBase = baseUrl.replace(/\/$/, "");
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const url = new URL(`${normalizedBase}${normalizedPath}`);
+  const url = new URL(`${normalizedBase}${normalizedPath}`, window.location.origin);
 
   Object.entries(query ?? {}).forEach(([key, rawValue]) => {
     const values = Array.isArray(rawValue) ? rawValue : [rawValue];
@@ -159,6 +169,6 @@ export class ApiClient {
 }
 
 export const api = new ApiClient(
-  import.meta.env.VITE_API_BASE_URL ?? DEFAULT_BASE_URL,
+  effectiveBaseUrl,
   Number(import.meta.env.VITE_API_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS,
 );
