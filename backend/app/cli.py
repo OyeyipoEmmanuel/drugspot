@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import sys
 
 from sqlalchemy import or_, select
 
@@ -99,6 +100,11 @@ def main() -> None:
     admin.add_argument("--last-name", required=True)
     admin.add_argument("--password", required=True)
     args = parser.parse_args()
+    
+    # Windows requires SelectorEventLoop for psycopg async compatibility
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    
     if args.command == "create-admin":
         asyncio.run(create_admin(args))
 
