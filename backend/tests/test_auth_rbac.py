@@ -7,6 +7,10 @@ from .conftest import auth_header, register_patient
 
 def test_health_and_frontend_auth_contract(api) -> None:
     client, _ = api
+    root_response = client.get("/")
+    assert root_response.status_code == 200
+    assert root_response.json()["status"] == "ok"
+
     assert client.get("/health").json() == {"status": "ok"}
     session = register_patient(client, email="patient@example.com", phone="+2348012345678")
     assert session["user"]["firstName"] == "Ada"
