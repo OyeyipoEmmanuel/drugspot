@@ -16,17 +16,17 @@ import { usePharmacies, useProducts } from "@/hooks/use-marketplace";
 import { formatNaira } from "@/lib/format";
 
 const images = {
-  hero: "https://plus.unsplash.com/premium_photo-1661776255948-7a76baa9d7b9?auto=format&fit=crop&w=1800&q=88",
+  hero: "https://images.pexels.com/photos/30677597/pexels-photo-30677597.jpeg?auto=compress&cs=tinysrgb&w=1800",
   pharmacistPatient:
-    "https://images.unsplash.com/photo-1576091358783-a212ec293ff3?auto=format&fit=crop&w=1200&q=85",
+    "https://images.pexels.com/photos/33132346/pexels-photo-33132346.jpeg?auto=compress&cs=tinysrgb&w=1200",
   pharmacyShelves:
     "https://images.unsplash.com/photo-1580281657527-47f249e8f4df?auto=format&fit=crop&w=1200&q=85",
   pharmacyTeam:
-    "https://plus.unsplash.com/premium_photo-1661770294094-06167872e079?auto=format&fit=crop&w=1200&q=85",
+    "https://images.pexels.com/photos/12793736/pexels-photo-12793736.jpeg?auto=compress&cs=tinysrgb&w=1200",
   pharmacyCustomer:
-    "https://plus.unsplash.com/premium_photo-1661777752178-fa6055526eb8?auto=format&fit=crop&w=1200&q=85",
+    "https://images.pexels.com/photos/37454249/pexels-photo-37454249.jpeg?auto=compress&cs=tinysrgb&w=1200",
   pharmacistPortrait:
-    "https://plus.unsplash.com/premium_photo-1663047392930-7c1c31d7b785?auto=format&fit=crop&w=1200&q=85",
+    "https://images.pexels.com/photos/5452191/pexels-photo-5452191.jpeg?auto=compress&cs=tinysrgb&w=1200",
   medicineFlatlay:
     "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?auto=format&fit=crop&w=1000&q=85",
 } as const;
@@ -178,7 +178,7 @@ export function WelcomePage() {
               <div className="overflow-hidden rounded-[2rem] border-[6px] border-white bg-blue-950 shadow-[0_35px_90px_-28px_rgba(15,49,98,0.55)] sm:rounded-[2.75rem] sm:border-[10px]">
                 <img
                   src={images.hero}
-                  alt="Pharmacists helping a customer inside a modern pharmacy"
+                  alt="Black African doctor consulting with a patient in Lagos"
                   className="h-[390px] w-full object-cover object-center sm:h-[540px] lg:h-[620px]"
                   fetchPriority="high"
                 />
@@ -441,7 +441,7 @@ export function WelcomePage() {
               <div className="overflow-hidden rounded-[2rem] border border-white/10">
                 <img
                   src={images.pharmacistPatient}
-                  alt="A pharmacist explaining medication to a patient"
+                    alt="Black African healthcare professional caring for a patient"
                   className="h-[500px] w-full object-cover"
                   loading="lazy"
                 />
@@ -509,7 +509,7 @@ export function WelcomePage() {
               <article className="group relative min-h-[460px] overflow-hidden rounded-[2rem]">
                 <img
                   src={images.pharmacyCustomer}
-                  alt="Patient receiving medicine at a pharmacy counter"
+                  alt="Black African healthcare professional in a modern clinic"
                   className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-105"
                   loading="lazy"
                 />
@@ -531,7 +531,7 @@ export function WelcomePage() {
               <article className="group relative min-h-[460px] overflow-hidden rounded-[2rem]">
                 <img
                   src={images.pharmacyTeam}
-                  alt="Pharmacists working together inside a pharmacy"
+                  alt="Black African healthcare professional representing trusted pharmacy care"
                   className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-105"
                   loading="lazy"
                 />
@@ -598,7 +598,7 @@ export function WelcomePage() {
           <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-blue-950 px-6 py-14 text-white shadow-2xl sm:px-12 sm:py-16 lg:px-20">
             <img
               src={images.pharmacistPortrait}
-              alt="Pharmacist inside a modern pharmacy"
+              alt="Black African healthcare professional"
               className="absolute inset-0 size-full object-cover opacity-20"
               loading="lazy"
             />
@@ -653,8 +653,11 @@ export function WelcomePage() {
             <a href="#medicines">Medicines</a>
             <a href="#how-it-works">How it works</a>
             <Link to="/register/pharmacy">For pharmacies</Link>
+            <a href="https://www.pexels.com" target="_blank" rel="noreferrer">
+              Photography: Pexels
+            </a>
             <a href="https://unsplash.com" target="_blank" rel="noreferrer">
-              Photography: Unsplash
+              Unsplash
             </a>
           </div>
         </div>
