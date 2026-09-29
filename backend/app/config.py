@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     ocr_space_api_key: str = ""
     ocr_space_api_url: str = "https://api.ocr.space/parse/image"
     ocr_space_timeout_seconds: float = Field(default=25, ge=5, le=60)
+    admin_email: str = ""
+    admin_password: str = ""
+    admin_first_name: str = ""
+    admin_last_name: str = ""
+    admin_phone: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
