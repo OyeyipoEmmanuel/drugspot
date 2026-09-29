@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import sys
 from decimal import Decimal
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -362,6 +363,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m app.db.seed")
     parser.add_argument("--verbose", action="store_true", help="Print verbose output")
     args = parser.parse_args()
+    
+    # Windows requires SelectorEventLoop for psycopg async compatibility
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    
     try:
         result = asyncio.run(seed_public_catalog())
     except RuntimeError as exc:
