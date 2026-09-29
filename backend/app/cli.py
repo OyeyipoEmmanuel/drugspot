@@ -11,6 +11,7 @@ from .config import get_settings
 from .database import AsyncSessionLocal
 from .models import add_audit_log
 from .pharmacy_verification import models as pharmacy_models  # noqa: F401
+from .commerce import models as commerce_models  # noqa: F401
 
 
 async def create_admin(args: argparse.Namespace) -> None:
