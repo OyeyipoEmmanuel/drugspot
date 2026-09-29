@@ -33,6 +33,11 @@ services:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/drugspot
       AUTH_SECRET: replace-with-a-long-production-secret
       CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175
+      ADMIN_EMAIL: admin@drugspot.local
+      ADMIN_PASSWORD: change-this-password-in-production
+      ADMIN_FIRST_NAME: Admin
+      ADMIN_LAST_NAME: User
+      ADMIN_PHONE: +2348000000000
     ports:
       - "8000:8000"
     volumes:

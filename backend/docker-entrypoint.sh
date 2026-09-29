@@ -11,6 +11,9 @@ if [ "$status" -ne 0 ]; then
 	exit "$status"
 fi
 
+echo "Bootstrapping admin if needed..."
+python -c "import asyncio; from app.cli import bootstrap_admin_if_needed; asyncio.run(bootstrap_admin_if_needed())"
+
 echo "Loading seed data..."
 python -m app.db.seed
 status=$?
