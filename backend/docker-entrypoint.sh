@@ -1,9 +1,23 @@
 #!/usr/bin/env sh
-set -eu
+set -u
 
 cd /app
 
-python -m alembic upgrade head
-python -m app.db.seed
+echo "Starting migrations..."
+alembic upgrade head
+status=$?
+if [ "$status" -ne 0 ]; then
+	echo "Migration failed with exit $status"
+	exit "$status"
+fi
 
-exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+echo "Loading seed data..."
+python -m app.db.seed
+status=$?
+if [ "$status" -ne 0 ]; then
+	echo "Seed failed with exit $status"
+	exit "$status"
+fi
+
+echo "Migrations complete, starting server..."
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000
