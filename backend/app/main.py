@@ -31,6 +31,17 @@ app.add_middleware(
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIRECTORY), name="uploads")
 
 
+@app.get("/", tags=["system"])
+async def root() -> dict[str, str]:
+    """Return a public readiness response for deployment routers."""
+    return {
+        "name": settings.app_name,
+        "status": "ok",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
 @app.get("/health", tags=["system"])
 async def health() -> dict[str, str]:
     return {"status": "ok"}
