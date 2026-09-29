@@ -144,16 +144,17 @@ routes to `index.html`. Deploy the backend separately as a Python 3.12 web
 service with `backend` as its root directory. Use `pip install -r requirements.txt`
 as the build command and `/health` as the health-check path.
 
-Pxxl can use the checked-in `Procfile`. On Render, set the start command to:
+Pxxl and other Procfile-compatible hosts can use the checked-in `Procfile`:
 
 ```text
-python -m alembic upgrade head && python -m app.db.seed && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+sh docker-entrypoint.sh
 ```
 
-Both startup commands migrate, seed, and then start the API. Seed data requires
-an existing platform administrator. For a new production database, create that
-admin once against the same database using the provider shell or a secure
-one-off command before using the normal start command.
+The entrypoint applies schema migrations before starting the API. It then runs
+the optional admin bootstrap and idempotent public catalogue seed in the
+background so remote database latency cannot block the deployment readiness
+check. Seed data requires a platform administrator; configure the `ADMIN_*`
+variables below for a new production database.
 
 Set these backend environment variables in Pxxl or Render:
 
@@ -163,6 +164,11 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE
 AUTH_SECRET=<random secret of at least 32 characters>
 CORS_ORIGINS=https://drugspot.vercel.app
 OCR_SPACE_API_KEY=<optional OCR.space key>
+ADMIN_EMAIL=<initial platform administrator email>
+ADMIN_PASSWORD=<initial platform administrator password>
+ADMIN_FIRST_NAME=<initial platform administrator first name>
+ADMIN_LAST_NAME=<initial platform administrator last name>
+ADMIN_PHONE=<initial platform administrator phone number>
 ```
 
 Use the provider's persistent PostgreSQL URL; the backend adapts
@@ -198,9 +204,9 @@ Then start the stack:
 docker compose up --build -d
 ```
 
-The backend entrypoint applies migrations and runs the idempotent seed before
-starting FastAPI. Later starts can use `docker compose up -d`. Stop with
-`docker compose down`.
+The backend entrypoint applies migrations, starts FastAPI, and completes the
+idempotent admin/catalogue bootstrap in the background. Later starts can use
+`docker compose up -d`. Stop with `docker compose down`.
 
 ## External-service notes
 

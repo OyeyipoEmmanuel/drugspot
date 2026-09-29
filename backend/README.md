@@ -119,10 +119,10 @@ uv run alembic check
 
 The frontend origin is `https://drugspot.vercel.app` and is included in the
 default CORS allowlist. In Pxxl or Render, configure a persistent PostgreSQL
-`DATABASE_URL` and a production `AUTH_SECRET`. The checked-in `Procfile` runs
-Alembic migrations, loads the public seed data, then starts the API. Seed data
-requires an existing platform administrator; create one once against a fresh
-deployment database before enabling the normal startup command.
+`DATABASE_URL` and a production `AUTH_SECRET`. The checked-in entrypoint runs
+Alembic migrations and starts the API before completing the optional admin and
+public-catalogue bootstrap in the background. This keeps remote seed queries
+outside the deployment readiness-critical path.
 
 ## Docker startup (recommended local deployment)
 
@@ -161,7 +161,7 @@ For local development, copy `.env.example` into `backend/.env` before running th
 
 ## Team usage notes
 
-- The backend bootstrap path is: migrate -> seed -> start uvicorn.
+- The backend startup path is: migrate -> start Uvicorn -> finish optional admin/catalogue bootstrap in the background.
 - The public seed only inserts approved pharmacies and marketplace products; it does not create patient, order, or pharmacist records.
 - Any authenticated path still requires creating a real patient, pharmacy, or platform admin via the live auth flow after the service is up.
 
