@@ -44,6 +44,9 @@ const emptyProduct: ProductCreateInput = {
   preorderSupported: false,
 };
 
+const PRODUCT_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_PRODUCT_IMAGE_BYTES = 5 * 1024 * 1024;
+
 function AddInventoryForm({ onClose }: { onClose: () => void }) {
   const create = useCreateInventory();
   const verifyNafdac = useVerifyNafdac();
@@ -51,6 +54,7 @@ function AddInventoryForm({ onClose }: { onClose: () => void }) {
   const [product, setProduct] = useState<ProductCreateInput>(emptyProduct);
   const [verification, setVerification] =
     useState<NafdacVerificationResult | null>(null);
+  const [imageError, setImageError] = useState("");
 
   const set = <K extends keyof ProductCreateInput>(
     key: K,
@@ -91,8 +95,23 @@ function AddInventoryForm({ onClose }: { onClose: () => void }) {
 
   const selectImage = async (file?: File) => {
     if (!file) return;
-    const result = await uploadImage.mutateAsync(file);
-    set("imageUrl", result.imageUrl);
+    setImageError("");
+    if (!PRODUCT_IMAGE_TYPES.includes(file.type)) {
+      setImageError("Upload a JPEG, PNG, or WebP product image.");
+      return;
+    }
+    if (file.size > MAX_PRODUCT_IMAGE_BYTES) {
+      setImageError("Product images must be 5 MB or smaller.");
+      return;
+    }
+    try {
+      const result = await uploadImage.mutateAsync(file);
+      set("imageUrl", result.imageUrl);
+    } catch (error) {
+      setImageError(
+        error instanceof Error ? error.message : "The image could not be uploaded.",
+      );
+    }
   };
 
   const canVerify =
@@ -244,9 +263,9 @@ function AddInventoryForm({ onClose }: { onClose: () => void }) {
             <p className="mt-2 text-xs text-muted-foreground">
               JPEG, PNG or WebP · maximum 5 MB
             </p>
-            {uploadImage.error && (
+            {(imageError || uploadImage.error) && (
               <p className="mt-2 text-sm font-medium text-red-700">
-                {uploadImage.error.message}
+                {imageError || uploadImage.error?.message}
               </p>
             )}
           </div>
