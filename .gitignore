@@ -61,3 +61,9 @@ node_modules/
 out/
 # Locally uploaded product images
 backend/uploads/
+
+# Generated demo-video capture workspace
+tmp/demo-video/
+tmp/demo_capture.py
+tmp/record_demo_video.py
+tmp/build_demo_video.ps1

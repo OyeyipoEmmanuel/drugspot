@@ -41,8 +41,14 @@ function toDefaults(initial?: Partial<MedicationInput> | OcrMedicationDraft): Fo
 export function MedicationForm({ initial, submitLabel, isSubmitting, onSubmit }: { initial?: Partial<MedicationInput> | OcrMedicationDraft; submitLabel: string; isSubmitting?: boolean; onSubmit: (input: MedicationInput) => Promise<void> | void }) {
   const { register, control, handleSubmit, formState: { errors } } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: toDefaults(initial) });
   const { fields, append, remove } = useFieldArray({ control, name: "schedules" });
+  const submit = handleSubmit(async ({ schedules, ...medication }) =>
+    onSubmit({
+      ...medication,
+      scheduleTimes: schedules.map(({ time }) => time),
+    }),
+  );
   return (
-    <form className="space-y-6" onSubmit={handleSubmit(async (values) => onSubmit({ ...values, scheduleTimes: values.schedules.map(({ time }) => time) }))}>
+    <form className="space-y-6" onSubmit={submit}>
       <div className="grid gap-5 sm:grid-cols-2">
         <FormField id="medicineName" label="Medicine name" error={errors.name?.message} placeholder="e.g. Amoxicillin" {...register("name")} />
         <FormField id="medicineStrength" label="Strength" error={errors.strength?.message} placeholder="e.g. 500 mg" {...register("strength")} />

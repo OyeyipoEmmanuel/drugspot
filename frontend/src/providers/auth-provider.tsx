@@ -35,6 +35,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hydrated = useRef(false);
   const refreshing = useRef(false);
 
+  // Route-level queries can run during the same render that introduces a new
+  // session. Keep the transport token in sync before those children render.
+  api.setAccessTokenProvider(() => session?.accessToken ?? null);
+
   useEffect(() => {
     api.setUnauthorizedHandler(() => {
       if (refreshing.current) return;
@@ -45,7 +49,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    api.setAccessTokenProvider(() => session?.accessToken ?? null);
     sessionStorage.save(session);
   }, [session]);
 
