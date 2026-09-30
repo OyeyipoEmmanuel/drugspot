@@ -14,3 +14,13 @@ def test_upload_directory_falls_back_when_configured_path_is_not_writable(monkey
 
     assert resolved == fallback_root / "drugspot-uploads"
     assert resolved.is_dir()
+
+
+def test_upload_directory_is_verified_without_leaving_probe_files(monkeypatch, tmp_path: Path) -> None:
+    uploads = tmp_path / "uploads"
+    monkeypatch.setenv("UPLOADS_DIRECTORY", str(uploads))
+
+    resolved = resolve_uploads_directory()
+
+    assert resolved == uploads
+    assert list(uploads.iterdir()) == []

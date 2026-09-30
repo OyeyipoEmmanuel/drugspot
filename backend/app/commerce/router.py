@@ -242,9 +242,15 @@ async def upload_product_image(
             detail="The uploaded file does not contain a valid product image.",
         )
 
-    PRODUCT_IMAGE_DIRECTORY.mkdir(parents=True, exist_ok=True)
     filename = f"{uuid4().hex}{extension}"
-    await run_in_threadpool((PRODUCT_IMAGE_DIRECTORY / filename).write_bytes, contents)
+    try:
+        PRODUCT_IMAGE_DIRECTORY.mkdir(parents=True, exist_ok=True)
+        await run_in_threadpool((PRODUCT_IMAGE_DIRECTORY / filename).write_bytes, contents)
+    except OSError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Product image storage is temporarily unavailable. Please try again.",
+        ) from exc
     base_url = str(request.base_url).rstrip("/")
     return ProductImageUploadResult(image_url=f"{base_url}/uploads/product-images/{filename}")
 
